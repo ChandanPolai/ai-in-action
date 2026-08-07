@@ -5,6 +5,8 @@ import {
   Video,
   CalendarCheck,
   Clapperboard,
+  BookOpen,
+  MessageSquareWarning,
   User,
   ChevronRight,
   ChevronLeft,
@@ -17,6 +19,8 @@ export const userNavItems = [
   { id: 'meetings', label: 'My Meetings', icon: Video },
   { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { id: 'recordings', label: 'Recordings', icon: Clapperboard },
+  { id: 'courses', label: 'Courses', icon: BookOpen },
+  { id: 'feedback', label: 'Feedback', icon: MessageSquareWarning },
   { id: 'profile', label: 'My Profile', icon: User }
 ];
 

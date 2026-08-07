@@ -16,11 +16,15 @@ import adminDashboardRoutes from './routes/admin/dashboardRoutes.js';
 import adminMeetingRoutes from './routes/admin/meetingRoutes.js';
 import adminAttendanceRoutes from './routes/admin/attendanceRoutes.js';
 import adminRecordingRoutes from './routes/admin/recordingRoutes.js';
+import adminCourseRoutes from './routes/admin/courseRoutes.js';
+import adminComplaintRoutes from './routes/admin/complaintRoutes.js';
 
 import userAuthRoutes from './routes/user/authRoutes.js';
 import userMeetingRoutes from './routes/user/meetingRoutes.js';
 import userAttendanceRoutes from './routes/user/attendanceRoutes.js';
 import userRecordingRoutes from './routes/user/recordingRoutes.js';
+import userCourseRoutes from './routes/user/courseRoutes.js';
+import userComplaintRoutes from './routes/user/complaintRoutes.js';
 
 dotenv.config();
 
@@ -49,6 +53,8 @@ if (process.env.NODE_ENV === 'development') {
 
 app.use('/uploads/admin', express.static(path.join(__dirname, 'uploads/admin')));
 app.use('/uploads/users', express.static(path.join(__dirname, 'uploads/users')));
+app.use('/uploads/courses', express.static(path.join(__dirname, 'uploads/courses')));
+app.use('/uploads/complaints', express.static(path.join(__dirname, 'uploads/complaints')));
 // Recordings are served only via authenticated stream — no public download URL
 // app.use('/uploads/recordings', express.static(path.join(__dirname, 'uploads/recordings')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
@@ -73,12 +79,16 @@ app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/admin/meetings', adminMeetingRoutes);
 app.use('/api/admin/attendance', adminAttendanceRoutes);
 app.use('/api/admin/recordings', adminRecordingRoutes);
+app.use('/api/admin/courses', adminCourseRoutes);
+app.use('/api/admin/complaints', adminComplaintRoutes);
 
 // User APIs
 app.use('/api/user/auth', userAuthRoutes);
 app.use('/api/user/meetings', userMeetingRoutes);
 app.use('/api/user/attendance', userAttendanceRoutes);
 app.use('/api/user/recordings', userRecordingRoutes);
+app.use('/api/user/courses', userCourseRoutes);
+app.use('/api/user/complaints', userComplaintRoutes);
 
 // SPA Fallbacks
 app.get(['/adminapp', '/adminapp/*'], (req, res) => {

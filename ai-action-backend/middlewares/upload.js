@@ -9,10 +9,11 @@ const __dirname = path.dirname(__filename);
 const uploadAdminDir = path.join(__dirname, '../uploads/admin');
 const uploadUserDir = path.join(__dirname, '../uploads/users');
 const uploadRecordingDir = path.join(__dirname, '../uploads/recordings');
-
 const uploadExcelDir = path.join(__dirname, '../uploads/excel');
+const uploadCourseDir = path.join(__dirname, '../uploads/courses');
+const uploadComplaintDir = path.join(__dirname, '../uploads/complaints');
 
-[uploadAdminDir, uploadUserDir, uploadRecordingDir, uploadExcelDir].forEach((dir) => {
+[uploadAdminDir, uploadUserDir, uploadRecordingDir, uploadExcelDir, uploadCourseDir, uploadComplaintDir].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -86,9 +87,23 @@ export const uploadExcelFile = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
+export const uploadCourseImage = multer({
+  storage: makeStorage(uploadCourseDir, 'course'),
+  fileFilter: imageFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+export const uploadComplaintImage = multer({
+  storage: makeStorage(uploadComplaintDir, 'complaint'),
+  fileFilter: imageFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
 export default {
   uploadAdminAvatar,
   uploadUserAvatar,
   uploadRecordingVideo,
-  uploadExcelFile
+  uploadExcelFile,
+  uploadCourseImage,
+  uploadComplaintImage
 };

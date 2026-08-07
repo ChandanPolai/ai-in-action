@@ -7,6 +7,8 @@ import Notification from './Notification.js';
 import VideoWatchLog from './VideoWatchLog.js';
 import VideoPlayRequest from './VideoPlayRequest.js';
 import AppSettings from './AppSettings.js';
+import Course from './Course.js';
+import Complaint from './Complaint.js';
 
 export {
   Admin,
@@ -17,7 +19,9 @@ export {
   Notification,
   VideoWatchLog,
   VideoPlayRequest,
-  AppSettings
+  AppSettings,
+  Course,
+  Complaint
 };
 
 export default {
@@ -29,5 +33,7 @@ export default {
   Notification,
   VideoWatchLog,
   VideoPlayRequest,
-  AppSettings
+  AppSettings,
+  Course,
+  Complaint
 };

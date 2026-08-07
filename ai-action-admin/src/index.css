@@ -101,3 +101,25 @@ body {
 .animate-drawer-in {
   animation: drawer-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
+.rich-text-editor .ql-toolbar.ql-snow {
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.rich-text-editor .ql-container.ql-snow {
+  border: none;
+  min-height: 180px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.rich-text-editor .ql-editor {
+  min-height: 180px;
+}
+
+.rich-text-editor .ql-editor.ql-blank::before {
+  color: #94a3b8;
+  font-style: normal;
+}

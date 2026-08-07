@@ -137,3 +137,26 @@ body {
 .animate-drawer-in {
   animation: drawer-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
+.course-details h1,
+.course-details h2,
+.course-details h3 {
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0.5rem 0;
+}
+
+.course-details p {
+  margin: 0.35rem 0;
+}
+
+.course-details ul,
+.course-details ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.course-details a {
+  color: #2563eb;
+  text-decoration: underline;
+}

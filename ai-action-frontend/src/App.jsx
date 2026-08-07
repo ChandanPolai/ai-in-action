@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import MeetingsPage from './pages/Meetings';
 import AttendancePage from './pages/Attendance';
 import RecordingsPage from './pages/Recordings';
+import CoursesPage from './pages/Courses';
+import ComplaintsPage from './pages/Complaints';
 import ProfilePage from './pages/Profile';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -45,6 +47,10 @@ const DashboardWrapper = () => {
         return <AttendancePage />;
       case 'recordings':
         return <RecordingsPage />;
+      case 'courses':
+        return <CoursesPage />;
+      case 'feedback':
+        return <ComplaintsPage />;
       case 'profile':
         return <ProfilePage />;
       default:
