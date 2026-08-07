@@ -7,6 +7,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Drawer from '../components/ui/Drawer';
+import { formatDate, formatDateTime } from '../utils/formatDate';
 
 const MeetingsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -207,7 +208,7 @@ const MeetingsPage = () => {
                     </div>
                     <p className="text-sm text-slate-500 mt-1 line-clamp-2">{m.description}</p>
                     <p className="text-xs text-slate-400 mt-1">
-                      {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : ''} · {timeLabel(m)}
+                      {m.meetingDate ? formatDate(m.meetingDate) : ''} · {timeLabel(m)}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -260,10 +261,8 @@ const MeetingsPage = () => {
             <div>
               <p className="font-bold text-slate-800">{reviewMeeting.title}</p>
               <p className="text-sm text-slate-500 mt-1">
-                {reviewMeeting.meetingDate
-                  ? new Date(reviewMeeting.meetingDate).toLocaleDateString()
-                  : ''}{' '}
-                · {timeLabel(reviewMeeting)}
+                {reviewMeeting.meetingDate ? formatDate(reviewMeeting.meetingDate) : ''} ·{' '}
+                {timeLabel(reviewMeeting)}
               </p>
             </div>
 
@@ -327,10 +326,8 @@ const MeetingsPage = () => {
             <div>
               <p className="font-bold text-slate-800">{viewReviewMeeting.title}</p>
               <p className="text-sm text-slate-500 mt-1">
-                {viewReviewMeeting.meetingDate
-                  ? new Date(viewReviewMeeting.meetingDate).toLocaleDateString()
-                  : ''}{' '}
-                · {timeLabel(viewReviewMeeting)}
+                {viewReviewMeeting.meetingDate ? formatDate(viewReviewMeeting.meetingDate) : ''} ·{' '}
+                {timeLabel(viewReviewMeeting)}
               </p>
             </div>
 
@@ -369,7 +366,7 @@ const MeetingsPage = () => {
             <p className="text-xs text-slate-400">
               Submitted{' '}
               {viewReviewMeeting.myReview.createdAt
-                ? new Date(viewReviewMeeting.myReview.createdAt).toLocaleString()
+                ? formatDateTime(viewReviewMeeting.myReview.createdAt)
                 : ''}
             </p>
 

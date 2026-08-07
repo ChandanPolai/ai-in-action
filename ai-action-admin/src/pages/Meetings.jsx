@@ -16,6 +16,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import Drawer from '../components/ui/Drawer';
+import { formatDate } from '../utils/formatDate';
 
 const emptyForm = {
   title: '',
@@ -312,7 +313,7 @@ const MeetingsPage = () => {
             <p className="text-sm text-slate-500 line-clamp-2 mb-3">{m.description || 'No description'}</p>
             <div className="text-xs text-slate-600 space-y-1 mb-4">
               <p>
-                {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : '—'}
+                {m.meetingDate ? formatDate(m.meetingDate) : '—'}
               </p>
               <p>
                 {m.startTime || m.meetingTime || '—'}

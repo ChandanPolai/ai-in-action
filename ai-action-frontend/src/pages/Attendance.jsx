@@ -6,6 +6,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import { formatDate } from '../utils/formatDate';
 
 const emptyFilters = {
   dateFrom: '',
@@ -125,7 +126,7 @@ const AttendancePage = () => {
                 <div className="min-w-0">
                   <p className="font-semibold text-slate-800 truncate">{r.meeting?.title || 'Meeting'}</p>
                   <p className="text-xs text-slate-500">
-                    {r.meeting?.meetingDate ? new Date(r.meeting.meetingDate).toLocaleDateString() : ''}
+                    {r.meeting?.meetingDate ? formatDate(r.meeting.meetingDate) : ''}
                     {r.meeting?.meetingTime ? ` · ${r.meeting.meetingTime}` : ''}
                     {r.meeting?.dayNumber ? ` · Day ${r.meeting.dayNumber}` : ''}
                   </p>

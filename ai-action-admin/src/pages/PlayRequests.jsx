@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Input from '../components/ui/Input';
 import Drawer from '../components/ui/Drawer';
+import { formatDateTime } from '../utils/formatDate';
 
 const PlayRequestsPage = () => {
   const [status, setStatus] = useState('pending');
@@ -105,7 +106,7 @@ const PlayRequestsPage = () => {
                     {r.recording ? ` (Day ${r.recording.dayNumber} · S${r.recording.sessionNumber})` : ''}
                   </p>
                   {r.reason && <p className="text-sm text-slate-500 mt-1">Reason: {r.reason}</p>}
-                  <p className="text-xs text-slate-400 mt-1">{new Date(r.createdAt).toLocaleString()}</p>
+                  <p className="text-xs text-slate-400 mt-1">{formatDateTime(r.createdAt)}</p>
                 </div>
                 {r.status === 'pending' && (
                   <div className="flex gap-2 shrink-0">

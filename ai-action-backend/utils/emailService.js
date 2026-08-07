@@ -78,7 +78,11 @@ export const sendEmail = async ({ to, subject, templateName, templateData, html,
     let bodyHtml = html;
 
     if (templateName && templateData) {
-      bodyHtml = renderEjsTemplate(templateName, templateData);
+      const serverUrl = (process.env.SERVER_URL || 'http://localhost:5000').replace(/\/$/, '');
+      bodyHtml = renderEjsTemplate(templateName, {
+        logoUrl: `${serverUrl}/public/images/AIA_02_Reversed_ForDark_onIndigo_1080.png`,
+        ...templateData
+      });
     }
 
     const fromEmail = process.env.MAILER_EMAIL || process.env.SMTP_USER || process.env.EMAIL_FROM_ADDRESS || 'noreply@aiinaction.com';

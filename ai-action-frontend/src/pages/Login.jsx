@@ -45,12 +45,11 @@ const Login = () => {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-7">
           <div className="inline-flex justify-center mb-4">
-            <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-white/20 backdrop-blur-sm">
-              <Logo size="lg" showText={false} />
+            <div className="rounded-2xl overflow-hidden shadow-xl ring-1 ring-white/20">
+              <Logo size="xl" showText={false} />
             </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">AI in Action</h1>
-          <p className="text-sky-100/90 mt-2 text-sm flex items-center justify-center gap-1.5">
+          <p className="text-sky-100/90 text-sm flex items-center justify-center gap-1.5">
             <Sparkles className="w-4 h-4" />
             Student Portal — join live sessions &amp; learn
           </p>

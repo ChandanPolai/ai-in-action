@@ -7,6 +7,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
+import { formatDateTime } from '../utils/formatDate';
 
 const Stars = ({ value }) => (
   <div className="inline-flex items-center gap-0.5">
@@ -240,7 +241,7 @@ const ReviewsPage = () => {
                       </button>
                     )}
                     <span className="text-xs text-slate-400">
-                      {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}
+                      {r.createdAt ? formatDateTime(r.createdAt) : ''}
                     </span>
                   </div>
                 </div>

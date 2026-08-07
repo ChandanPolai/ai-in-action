@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import Drawer from '../components/ui/Drawer';
+import { formatDateTime } from '../utils/formatDate';
 
 const statusVariant = (status) => {
   if (status === 'resolved') return 'success';
@@ -178,7 +179,7 @@ const ComplaintsPage = () => {
                     </Badge>
                     <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
                     <span className="text-xs text-slate-400">
-                      {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
+                      {item.createdAt ? formatDateTime(item.createdAt) : ''}
                     </span>
                   </div>
                   <p className="font-bold text-slate-800">{item.subject}</p>

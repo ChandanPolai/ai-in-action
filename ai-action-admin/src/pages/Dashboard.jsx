@@ -3,6 +3,7 @@ import { Users, UserCheck, UserX, Video, CalendarClock, CheckCircle2, BarChart3 
 import { postRequest } from '../services/apiClient';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import { formatDate } from '../utils/formatDate';
 
 const StatCard = ({ icon: Icon, label, value, accent }) => (
   <div className="card-aesthetic p-5 flex items-start gap-4">
@@ -83,7 +84,7 @@ const Dashboard = () => {
                 <div className="min-w-0">
                   <p className="font-semibold text-slate-800 truncate">{m.title}</p>
                   <p className="text-xs text-slate-500">
-                    {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : ''} · {m.meetingTime}
+                    {m.meetingDate ? formatDate(m.meetingDate) : ''} · {m.meetingTime}
                   </p>
                 </div>
                 <Badge variant={m.status === 'completed' ? 'success' : 'info'}>{m.status}</Badge>

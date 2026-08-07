@@ -9,6 +9,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
+import { formatDate } from '../utils/formatDate';
 
 const emptyFilters = {
   meetingId: '',
@@ -131,7 +132,7 @@ const AttendancePage = () => {
               {meetings.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.title}
-                  {m.meetingDate ? ` · ${new Date(m.meetingDate).toLocaleDateString()}` : ''}
+                  {m.meetingDate ? ` · ${formatDate(m.meetingDate)}` : ''}
                 </option>
               ))}
             </select>
@@ -192,7 +193,7 @@ const AttendancePage = () => {
                     </td>
                     <td className="py-3 px-2 text-sm text-slate-700">{r.meetingId?.title || '—'}</td>
                     <td className="py-3 px-2 text-sm text-slate-600 whitespace-nowrap">
-                      {r.meetingId?.meetingDate ? new Date(r.meetingId.meetingDate).toLocaleDateString() : '—'}
+                      {r.meetingId?.meetingDate ? formatDate(r.meetingId.meetingDate) : '—'}
                       {r.meetingId?.meetingTime ? ` · ${r.meetingId.meetingTime}` : ''}
                     </td>
                     <td className="py-3 px-2">

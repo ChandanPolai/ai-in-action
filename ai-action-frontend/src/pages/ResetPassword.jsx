@@ -52,8 +52,8 @@ const ResetPassword = () => {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-7">
           <div className="inline-flex justify-center mb-4">
-            <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-white/20 backdrop-blur-sm">
-              <Logo size="lg" showText={false} />
+            <div className="rounded-2xl overflow-hidden shadow-xl ring-1 ring-white/20">
+              <Logo size="xl" showText={false} />
             </div>
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">Reset Password</h1>

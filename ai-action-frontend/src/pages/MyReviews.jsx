@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { postRequest } from '../services/apiClient';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import { formatDate, formatDateTime } from '../utils/formatDate';
 
 const Stars = ({ value }) => (
   <div className="inline-flex items-center gap-0.5">
@@ -71,9 +72,7 @@ const MyReviewsPage = () => {
                   )}
                 </div>
                 <p className="text-xs text-slate-400 mb-2">
-                  {r.meeting?.meetingDate
-                    ? new Date(r.meeting.meetingDate).toLocaleDateString()
-                    : ''}
+                  {r.meeting?.meetingDate ? formatDate(r.meeting.meetingDate) : ''}
                   {r.meeting?.startTime
                     ? ` · ${r.meeting.startTime}${r.meeting.endTime ? ` – ${r.meeting.endTime}` : ''}`
                     : ''}
@@ -82,7 +81,7 @@ const MyReviewsPage = () => {
                   <Stars value={r.rating} />
                   <Badge variant="info">{r.rating}/5</Badge>
                   <span className="text-xs text-slate-400">
-                    Submitted {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}
+                    Submitted {r.createdAt ? formatDateTime(r.createdAt) : ''}
                   </span>
                 </div>
                 <p className="text-sm text-slate-700 whitespace-pre-wrap">

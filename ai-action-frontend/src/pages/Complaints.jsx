@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import Drawer from '../components/ui/Drawer';
+import { formatDateTime } from '../utils/formatDate';
 
 const statusVariant = (status) => {
   if (status === 'resolved') return 'success';
@@ -131,7 +132,7 @@ const ComplaintsPage = () => {
                   <p className="font-bold text-slate-800">{item.subject}</p>
                 </div>
                 <p className="text-xs text-slate-400">
-                  {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
+                  {item.createdAt ? formatDateTime(item.createdAt) : ''}
                 </p>
               </div>
               <p className="text-sm text-slate-600 whitespace-pre-wrap">{item.message}</p>
@@ -150,7 +151,7 @@ const ComplaintsPage = () => {
                   <p className="text-sm text-slate-700 whitespace-pre-wrap">{item.adminReply}</p>
                   {item.repliedAt && (
                     <p className="text-[11px] text-slate-400 mt-1">
-                      {new Date(item.repliedAt).toLocaleString()}
+                      {formatDateTime(item.repliedAt)}
                     </p>
                   )}
                 </div>

@@ -2,7 +2,7 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { User } from '../../models/index.js';
+import { User, Attendance, Meeting, MeetingReview, Recording, VideoWatchLog, VideoPlayRequest, Complaint, Notification } from '../../models/index.js';
 import { hashPassword } from '../../utils/password.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
 import { sendLoginCredentialsEmail } from '../../utils/emailService.js';
@@ -191,11 +191,47 @@ export const deleteUser = async (req, res) => {
     const user = await User.findOne({ _id: userId, isDeleted: false });
     if (!user) return sendError(res, 'User not found', null, 404);
 
+    // Soft-delete user
     user.isDeleted = true;
     user.isActive = false;
     await user.save();
 
-    return sendSuccess(res, 'User deleted successfully');
+    // Remove from all related collections so they disappear everywhere (attendance, meetings, etc.)
+    const [
+      attendanceDeleted,
+      reviewsDeleted,
+      meetingsUpdated,
+      recordingsUpdated,
+      watchLogsDeleted,
+      playRequestsDeleted,
+      complaintsDeleted,
+      notificationsDeleted
+    ] = await Promise.all([
+      Attendance.deleteMany({ userId }),
+      MeetingReview.deleteMany({ userId }),
+      Meeting.updateMany({ assignedUsers: userId }, { $pull: { assignedUsers: userId } }),
+      Recording.updateMany(
+        { $or: [{ allowedUsers: userId }, { deniedUsers: userId }] },
+        { $pull: { allowedUsers: userId, deniedUsers: userId } }
+      ),
+      VideoWatchLog.deleteMany({ userId }),
+      VideoPlayRequest.deleteMany({ userId }),
+      Complaint.deleteMany({ userId }),
+      Notification.deleteMany({ userId })
+    ]);
+
+    return sendSuccess(res, 'User deleted successfully and removed from all related data', {
+      cleanup: {
+        attendance: attendanceDeleted.deletedCount || 0,
+        reviews: reviewsDeleted.deletedCount || 0,
+        meetings: meetingsUpdated.modifiedCount || 0,
+        recordings: recordingsUpdated.modifiedCount || 0,
+        watchLogs: watchLogsDeleted.deletedCount || 0,
+        playRequests: playRequestsDeleted.deletedCount || 0,
+        complaints: complaintsDeleted.deletedCount || 0,
+        notifications: notificationsDeleted.deletedCount || 0
+      }
+    });
   } catch (error) {
     return sendError(res, error.message, null, 500);
   }

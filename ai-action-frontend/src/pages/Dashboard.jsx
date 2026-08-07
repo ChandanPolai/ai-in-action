@@ -7,6 +7,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
+import { formatDate } from '../utils/formatDate';
 
 const Dashboard = () => {
   const { user } = useSelector((state) => state.auth);
@@ -162,7 +163,7 @@ const Dashboard = () => {
                     {m.alreadyAttended && <Badge variant="success">Already attended</Badge>}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : ''} · {m.meetingTime}
+                    {m.meetingDate ? formatDate(m.meetingDate) : ''} · {m.meetingTime}
                   </p>
                 </div>
                 {m.status === 'live' ? (
@@ -226,7 +227,7 @@ const Dashboard = () => {
                   </div>
                   {m.description && <p className="text-sm text-slate-500">{m.description}</p>}
                   <p className="text-xs text-slate-500">
-                    Date: {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : '—'} · Time:{' '}
+                    Date: {m.meetingDate ? formatDate(m.meetingDate) : '—'} · Time:{' '}
                     {m.meetingTime}
                   </p>
                   <Button

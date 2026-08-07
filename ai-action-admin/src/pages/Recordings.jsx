@@ -16,6 +16,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import Drawer from '../components/ui/Drawer';
+import { formatDate, formatDateTime } from '../utils/formatDate';
 
 const emptyForm = {
   sessionTitle: '',
@@ -225,7 +226,7 @@ const RecordingsPage = () => {
               <span className="px-2 py-1 rounded-lg bg-slate-50">Viewers: {r.uniqueViewers || 0}</span>
             </div>
             <p className="text-xs text-slate-400 mb-4">
-              Uploaded {r.uploadDate ? new Date(r.uploadDate).toLocaleDateString() : '—'}
+              Uploaded {r.uploadDate ? formatDate(r.uploadDate) : '—'}
               {r.videoFile ? ' · Uploaded file' : ''}
               {r.videoUrl ? ' · URL' : ''}
             </p>
@@ -392,7 +393,7 @@ const RecordingsPage = () => {
                       <td className="px-3 py-2">{v.playCount} / {v.maxAllowed}</td>
                       <td className="px-3 py-2">{v.extraPlaysAllowed || 0}</td>
                       <td className="px-3 py-2 text-xs text-slate-500">
-                        {v.lastWatchedAt ? new Date(v.lastWatchedAt).toLocaleString() : '—'}
+                        {v.lastWatchedAt ? formatDateTime(v.lastWatchedAt) : '—'}
                       </td>
                     </tr>
                   ))}
