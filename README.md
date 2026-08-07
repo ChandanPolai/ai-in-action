@@ -87,4 +87,4 @@ npm run build:all
 npm start
 ```
 
-Serves **User** at domain root (`/login`) and **Admin** at `/adminapp/`.
+Serves **User** at `/userapp/` and **Admin** at `/adminapp/` (same pattern).
