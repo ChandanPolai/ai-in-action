@@ -1,5 +1,7 @@
 import { Meeting, Attendance } from '../../models/index.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
+import { grantVideoAccessToAbsentees } from '../../utils/videoAccess.js';
+import moment from 'moment';
 
 const formatMeeting = (m) => ({
   id: m._id,
@@ -86,11 +88,28 @@ export const createMeeting = async (req, res) => {
 // @route   POST /api/admin/meetings/list
 export const listMeetings = async (req, res) => {
   try {
-    const { search = '', status = 'all', dayNumber, page = 1, limit = 50 } = req.body;
+    const {
+      search = '',
+      status = 'all',
+      dayNumber,
+      sessionNumber,
+      dateFrom,
+      dateTo,
+      page = 1,
+      limit = 50
+    } = req.body;
     const query = { isDeleted: false };
 
-    if (status !== 'all') query.status = status;
+    if (status && status !== 'all') query.status = status;
     if (dayNumber) query.dayNumber = Number(dayNumber);
+    if (sessionNumber) query.sessionNumber = Number(sessionNumber);
+
+    if (dateFrom || dateTo) {
+      query.meetingDate = {};
+      if (dateFrom) query.meetingDate.$gte = moment(dateFrom).startOf('day').toDate();
+      if (dateTo) query.meetingDate.$lte = moment(dateTo).endOf('day').toDate();
+    }
+
     if (search) {
       const regex = new RegExp(search.trim(), 'i');
       query.$or = [{ title: regex }, { description: regex }];
@@ -212,7 +231,13 @@ export const markMeetingCompleted = async (req, res) => {
     meeting.status = 'completed';
     await meeting.save();
 
-    return sendSuccess(res, 'Meeting marked as completed', { meeting: formatMeeting(meeting) });
+    // Auto: all absentees get video access for linked / same day-session recordings
+    const grant = await grantVideoAccessToAbsentees(meeting._id);
+
+    return sendSuccess(res, 'Meeting marked as completed. Absentees auto-assigned video access.', {
+      meeting: formatMeeting(meeting),
+      videoAccess: grant
+    });
   } catch (error) {
     return sendError(res, error.message, null, 500);
   }

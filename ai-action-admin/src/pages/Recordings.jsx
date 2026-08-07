@@ -309,7 +309,7 @@ const RecordingsPage = () => {
 
       <Drawer isOpen={accessOpen} onClose={() => setAccessOpen(false)} title={`Video Access — ${accessRecording?.sessionTitle || ''}`} size="lg">
         <p className="text-sm text-slate-500 mb-4">
-          Only checked users can watch this recording. Absent users can be allowed; present users need explicit permission.
+          Shows username and Present/Absent status. Absent users get video access automatically when the meeting is completed or when attendance is marked Absent.
         </p>
         <div className="max-h-[55vh] overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 mb-4">
           {accessMatrix.length === 0 && <p className="text-xs text-slate-400">No users available</p>}
@@ -321,11 +321,19 @@ const RecordingsPage = () => {
                 onChange={() => toggleAccessUser(u.id)}
                 className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
               />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800">{u.name}</p>
-                <p className="text-xs text-slate-500">{u.email}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-800">{u.username || u.name}</p>
+                <p className="text-xs text-slate-500 truncate">
+                  {u.email}
+                  {u.mobileNumber ? ` · ${u.mobileNumber}` : ''}
+                </p>
               </div>
-              {u.canWatch && <Badge variant="success" className="ml-auto">Can watch</Badge>}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {u.isPresent && <Badge variant="success">Present</Badge>}
+                {u.isAbsent && <Badge variant="warning">Absent</Badge>}
+                {!u.attendanceStatus && <Badge variant="default">No attendance</Badge>}
+                {u.canWatch && <Badge variant="info">Can watch</Badge>}
+              </div>
             </label>
           ))}
         </div>

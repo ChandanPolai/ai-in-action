@@ -1,5 +1,6 @@
-import { Recording, User, VideoWatchLog, VideoPlayRequest, AppSettings } from '../../models/index.js';
+import { Recording, User, VideoWatchLog, VideoPlayRequest, AppSettings, Attendance, Meeting } from '../../models/index.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
+import { grantAbsenteesForRecording } from '../../utils/videoAccess.js';
 
 const formatRecording = (r, stats = null) => ({
   id: r._id,
@@ -98,6 +99,9 @@ export const createRecording = async (req, res) => {
     });
     await recording.populate('allowedUsers', 'name email');
     await recording.populate('deniedUsers', 'name email');
+
+    // Auto: absentees of linked meeting get video access
+    await grantAbsenteesForRecording(recording);
 
     return sendSuccess(res, 'Recording created successfully', { recording: formatRecording(recording) }, 201);
   } catch (error) {
@@ -202,6 +206,10 @@ export const updateRecording = async (req, res) => {
     if (maxPlayCount !== undefined) recording.maxPlayCount = Math.max(1, Number(maxPlayCount) || 1);
     if (req.file) recording.videoFile = `/uploads/recordings/${req.file.filename}`;
     await recording.save();
+
+    // Auto: absentees get video access when recording is linked / updated
+    await grantAbsenteesForRecording(recording);
+
     await recording.populate('allowedUsers', 'name email profilePhoto');
     await recording.populate('deniedUsers', 'name email profilePhoto');
 
@@ -277,7 +285,7 @@ export const setRecordingAccess = async (req, res) => {
   }
 };
 
-// @desc    Get all users with access flags for a recording
+// @desc    Get all users with access flags for a recording (+ present/absent)
 // @route   POST /api/admin/recordings/access-matrix
 export const getAccessMatrix = async (req, res) => {
   try {
@@ -287,19 +295,67 @@ export const getAccessMatrix = async (req, res) => {
     const recording = await Recording.findOne({ _id: recordingId, isDeleted: false });
     if (!recording) return sendError(res, 'Recording not found', null, 404);
 
-    const users = await User.find({ isDeleted: false, isActive: true }).select('name email profilePhoto').sort({ name: 1 });
+    const users = await User.find({ isDeleted: false, isActive: true })
+      .select('name email mobileNumber profilePhoto')
+      .sort({ name: 1 });
+
     const allowedSet = new Set(recording.allowedUsers.map((id) => id.toString()));
     const deniedSet = new Set(recording.deniedUsers.map((id) => id.toString()));
 
-    const matrix = users.map((u) => ({
-      id: u._id,
-      name: u.name,
-      email: u.email,
-      profilePhoto: u.profilePhoto,
-      canWatch: allowedSet.has(u._id.toString()) && !deniedSet.has(u._id.toString()),
-      isAllowed: allowedSet.has(u._id.toString()),
-      isDenied: deniedSet.has(u._id.toString())
-    }));
+    // Attendance for linked meeting, or same day + session meetings
+    let meetingIds = [];
+    if (recording.meetingId) {
+      meetingIds = [recording.meetingId];
+    } else {
+      const meetings = await Meeting.find({
+        isDeleted: false,
+        dayNumber: recording.dayNumber,
+        sessionNumber: recording.sessionNumber
+      }).select('_id');
+      meetingIds = meetings.map((m) => m._id);
+    }
+
+    const attendanceMap = new Map();
+    if (meetingIds.length) {
+      const attendance = await Attendance.find({ meetingId: { $in: meetingIds } }).select(
+        'userId status meetingId'
+      );
+      // Prefer most recent / any present over absent if multiple meetings
+      attendance.forEach((a) => {
+        const uid = a.userId.toString();
+        const prev = attendanceMap.get(uid);
+        if (!prev || (prev === 'absent' && a.status === 'present')) {
+          attendanceMap.set(uid, a.status);
+        }
+      });
+    }
+
+    const matrix = users.map((u) => {
+      const uid = u._id.toString();
+      const attendanceStatus = attendanceMap.has(uid) ? attendanceMap.get(uid) : null;
+      return {
+        id: u._id,
+        name: u.name,
+        username: u.name,
+        email: u.email,
+        mobileNumber: u.mobileNumber || '',
+        profilePhoto: u.profilePhoto,
+        canWatch: allowedSet.has(uid) && !deniedSet.has(uid),
+        isAllowed: allowedSet.has(uid),
+        isDenied: deniedSet.has(uid),
+        attendanceStatus, // 'present' | 'absent' | null
+        isPresent: attendanceStatus === 'present',
+        isAbsent: attendanceStatus === 'absent'
+      };
+    });
+
+    // Sort: absent first (likely need video), then present, then no attendance
+    matrix.sort((a, b) => {
+      const rank = (x) => (x.isAbsent ? 0 : x.isPresent ? 1 : 2);
+      const d = rank(a) - rank(b);
+      if (d !== 0) return d;
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
     return sendSuccess(res, 'Access matrix fetched successfully', {
       recording: formatRecording(recording),

@@ -1,5 +1,6 @@
 import { Attendance, Meeting, User } from '../../models/index.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
+import { grantVideoAccessToUserForMeeting } from '../../utils/videoAccess.js';
 import moment from 'moment';
 
 const formatAttendance = (a) => ({
@@ -163,6 +164,13 @@ export const updateAttendance = async (req, res) => {
 
     await record.populate('userId', 'name email profilePhoto');
     await record.populate('meetingId', 'title meetingDate meetingTime');
+
+    // Auto: if marked absent → grant video access for that meeting's recordings
+    if (record.status === 'absent' && record.meetingId && record.userId) {
+      const meetingId = record.meetingId._id || record.meetingId;
+      const userId = record.userId._id || record.userId;
+      await grantVideoAccessToUserForMeeting(meetingId, userId);
+    }
 
     return sendSuccess(res, 'Attendance updated successfully', { record: formatAttendance(record) });
   } catch (error) {

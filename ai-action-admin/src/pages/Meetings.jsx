@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Pencil, Trash2, CheckCircle, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, CheckCircle, Search, Radio, Filter } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   fetchMeetingsThunk,
@@ -38,9 +38,27 @@ const MeetingsPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    dayNumber: '',
+    sessionNumber: '',
+    dateFrom: '',
+    dateTo: ''
+  });
+
+  const loadMeetings = (next = filters) => {
+    const payload = { status: next.status || 'all' };
+    if (next.search.trim()) payload.search = next.search.trim();
+    if (next.dayNumber) payload.dayNumber = Number(next.dayNumber);
+    if (next.sessionNumber) payload.sessionNumber = Number(next.sessionNumber);
+    if (next.dateFrom) payload.dateFrom = next.dateFrom;
+    if (next.dateTo) payload.dateTo = next.dateTo;
+    dispatch(fetchMeetingsThunk(payload));
+  };
 
   useEffect(() => {
-    dispatch(fetchMeetingsThunk({}));
+    loadMeetings();
     dispatch(fetchUsersThunk({ status: 'active', limit: 500 }));
   }, [dispatch]);
 
@@ -133,7 +151,7 @@ const MeetingsPage = () => {
         toast.success('Meeting created');
       }
       setModalOpen(false);
-      dispatch(fetchMeetingsThunk({}));
+      loadMeetings();
     } catch (err) {
       toast.error(err || 'Failed');
     } finally {
@@ -146,7 +164,7 @@ const MeetingsPage = () => {
     try {
       await dispatch(deleteMeetingThunk(m.id)).unwrap();
       toast.success('Deleted');
-      dispatch(fetchMeetingsThunk({}));
+      loadMeetings();
     } catch (err) {
       toast.error(err);
     }
@@ -154,12 +172,45 @@ const MeetingsPage = () => {
 
   const markCompleted = async (m) => {
     try {
-      await postRequest('/admin/meetings/mark-completed', { meetingId: m.id });
-      toast.success('Marked completed');
-      dispatch(fetchMeetingsThunk({}));
+      const res = await postRequest('/admin/meetings/mark-completed', { meetingId: m.id });
+      toast.success(
+        res.message ||
+          `Completed — ${res.data?.videoAccess?.granted || 0} absentees auto-assigned video`
+      );
+      loadMeetings();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || err);
     }
+  };
+
+  const markLive = async (m) => {
+    try {
+      await dispatch(updateMeetingThunk({ meetingId: m.id, status: 'live' })).unwrap();
+      toast.success('Meeting is now Live — users can mark attendance');
+      loadMeetings();
+    } catch (err) {
+      toast.error(err.message || err);
+    }
+  };
+
+  const clearFilters = () => {
+    const reset = {
+      search: '',
+      status: 'all',
+      dayNumber: '',
+      sessionNumber: '',
+      dateFrom: '',
+      dateTo: ''
+    };
+    setFilters(reset);
+    loadMeetings(reset);
+  };
+
+  const statusVariant = (status) => {
+    if (status === 'completed') return 'success';
+    if (status === 'cancelled') return 'danger';
+    if (status === 'live') return 'danger';
+    return 'info';
   };
 
   return (
@@ -167,18 +218,98 @@ const MeetingsPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">Meetings</h2>
-          <p className="text-sm text-slate-500">Schedule Zoom sessions day-wise / session-wise</p>
+          <p className="text-sm text-slate-500">
+            Set status to <strong>Live</strong> when session starts — only then users can mark attendance
+          </p>
         </div>
         <Button icon={Plus} onClick={openCreate}>Create Meeting</Button>
       </div>
 
+      <Card className="!p-4 sm:!p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="w-4 h-4 text-brand-600" />
+          <p className="text-sm font-bold text-slate-800">Filters</p>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-3">
+            <Input
+              label="Search"
+              icon={Search}
+              placeholder="Search by meeting title..."
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') loadMeetings();
+              }}
+            />
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Status
+              </label>
+              <select
+                className="custom-input"
+                value={filters.status}
+                onChange={(e) => {
+                  const next = { ...filters, status: e.target.value };
+                  setFilters(next);
+                  loadMeetings(next);
+                }}
+              >
+                <option value="all">All statuses</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="live">Live</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Input
+              label="Day number"
+              type="number"
+              min={1}
+              placeholder="e.g. 1"
+              value={filters.dayNumber}
+              onChange={(e) => setFilters({ ...filters, dayNumber: e.target.value })}
+            />
+            <Input
+              label="Session number"
+              type="number"
+              min={1}
+              placeholder="e.g. 1"
+              value={filters.sessionNumber}
+              onChange={(e) => setFilters({ ...filters, sessionNumber: e.target.value })}
+            />
+            <Input
+              label="Date from"
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+            />
+            <Input
+              label="Date to"
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button size="sm" onClick={() => loadMeetings()}>Apply filters</Button>
+            <Button size="sm" variant="ghost" onClick={clearFilters}>Clear all</Button>
+          </div>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {loading && <p className="text-slate-400 col-span-full text-center py-10">Loading...</p>}
         {!loading && list.length === 0 && (
-          <p className="text-slate-400 col-span-full text-center py-10">No meetings yet</p>
+          <p className="text-slate-400 col-span-full text-center py-10">No meetings found</p>
         )}
         {list.map((m) => (
-          <Card key={m.id} className="!p-5">
+          <Card key={m.id} className={`!p-5 ${m.status === 'live' ? '!border-rose-200 !bg-rose-50/30' : ''}`}>
             <div className="flex items-start justify-between gap-2 mb-3">
               <div className="min-w-0">
                 <p className="font-bold text-slate-800 truncate">{m.title}</p>
@@ -186,25 +317,46 @@ const MeetingsPage = () => {
                   Day {m.dayNumber} · Session {m.sessionNumber}
                 </p>
               </div>
-              <Badge variant={m.status === 'completed' ? 'success' : m.status === 'cancelled' ? 'danger' : 'info'}>
-                {m.status}
-              </Badge>
+              <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
             </div>
             <p className="text-sm text-slate-500 line-clamp-2 mb-3">{m.description || 'No description'}</p>
             <div className="text-xs text-slate-600 space-y-1 mb-4">
-              <p>📅 {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : '—'} · ⏰ {m.meetingTime}</p>
-              <p>👥 {(m.assignedUsers || []).length} assigned</p>
+              <p>
+                {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : '—'} · {m.meetingTime}
+              </p>
+              <p>{(m.assignedUsers || []).length} users assigned</p>
             </div>
             <div className="flex items-center gap-1 border-t border-slate-100 pt-3">
-              <button onClick={() => openEdit(m)} className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600">
+              <button
+                onClick={() => openEdit(m)}
+                className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600"
+                title="Edit"
+              >
                 <Pencil className="w-4 h-4" />
               </button>
-              {m.status !== 'completed' && (
-                <button onClick={() => markCompleted(m)} className="p-2 rounded-lg hover:bg-emerald-50 text-slate-500 hover:text-emerald-600" title="Mark completed">
+              {m.status === 'upcoming' && (
+                <button
+                  onClick={() => markLive(m)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100"
+                  title="Go Live"
+                >
+                  <Radio className="w-3.5 h-3.5" /> Go Live
+                </button>
+              )}
+              {m.status !== 'completed' && m.status !== 'cancelled' && (
+                <button
+                  onClick={() => markCompleted(m)}
+                  className="p-2 rounded-lg hover:bg-emerald-50 text-slate-500 hover:text-emerald-600"
+                  title="Mark completed"
+                >
                   <CheckCircle className="w-4 h-4" />
                 </button>
               )}
-              <button onClick={() => handleDelete(m)} className="p-2 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600 ml-auto">
+              <button
+                onClick={() => handleDelete(m)}
+                className="p-2 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600 ml-auto"
+                title="Delete"
+              >
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>

@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 /**
- * Right-side drawer panel (replaces centered popups/modals).
+ * Right-side drawer — portaled to body so overlay covers sticky header fully.
  */
 export const Drawer = ({
   isOpen,
@@ -35,17 +36,17 @@ export const Drawer = ({
     xl: 'max-w-2xl'
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex justify-end">
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex justify-end">
       <button
         type="button"
         aria-label="Close drawer overlay"
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm border-0 cursor-pointer"
+        className="absolute inset-0 bg-slate-900/50 border-0 cursor-pointer"
         onClick={onClose}
       />
 
       <aside
-        className={`relative w-full ${widths[size] || widths.md} h-full bg-white shadow-2xl flex flex-col animate-drawer-in border-l border-slate-200`}
+        className={`relative z-[201] w-full ${widths[size] || widths.md} h-full max-h-[100dvh] bg-white shadow-2xl flex flex-col animate-drawer-in border-l border-slate-200`}
         role="dialog"
         aria-modal="true"
         aria-label={title || 'Drawer'}
@@ -69,7 +70,8 @@ export const Drawer = ({
           </div>
         )}
       </aside>
-    </div>
+    </div>,
+    document.body
   );
 };
 

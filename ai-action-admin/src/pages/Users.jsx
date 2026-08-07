@@ -392,7 +392,7 @@ const UsersPage = () => {
         {importStep === 1 && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Upload `.xlsx` / `.xls` / `.csv` file. Next step me columns map karke users create honge.
+              Upload `.xlsx` / `.xls` / `.csv` file. Next you will map columns and create users.
             </p>
             <label className="flex flex-col items-center justify-center gap-2 min-h-[160px] border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 hover:border-brand-300 hover:bg-brand-50/40 cursor-pointer px-4 py-6">
               <FileSpreadsheet className="w-8 h-8 text-brand-500" />

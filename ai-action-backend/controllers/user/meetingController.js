@@ -1,8 +1,7 @@
 import { Meeting, Attendance } from '../../models/index.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
-import moment from 'moment';
 
-const formatMeeting = (m) => ({
+const formatMeeting = (m, attendanceStatus = null) => ({
   id: m._id,
   title: m.title,
   description: m.description,
@@ -12,7 +11,9 @@ const formatMeeting = (m) => ({
   dayNumber: m.dayNumber,
   sessionNumber: m.sessionNumber,
   organizationType: m.organizationType,
-  status: m.status
+  status: m.status,
+  attendanceStatus,
+  alreadyAttended: attendanceStatus === 'present'
 });
 
 // @desc    List meetings assigned to logged-in user
@@ -25,27 +26,34 @@ export const listMyMeetings = async (req, res) => {
       assignedUsers: req.user._id
     };
 
-    const now = moment().startOf('day').toDate();
-
     if (filter === 'upcoming') {
       query.status = { $in: ['upcoming', 'live'] };
-      query.meetingDate = { $gte: now };
+    } else if (filter === 'live') {
+      query.status = 'live';
     } else if (filter === 'completed') {
       query.status = 'completed';
     }
 
     const meetings = await Meeting.find(query).sort({ meetingDate: 1, meetingTime: 1 });
 
-    // Group day-wise for UI
+    const attendance = await Attendance.find({
+      userId: req.user._id,
+      meetingId: { $in: meetings.map((m) => m._id) }
+    }).select('meetingId status');
+
+    const attMap = new Map(attendance.map((a) => [a.meetingId.toString(), a.status]));
+
     const byDay = {};
-    meetings.forEach((m) => {
+    const list = meetings.map((m) => {
+      const item = formatMeeting(m, attMap.get(m._id.toString()) || null);
       const key = `Day ${m.dayNumber}`;
       if (!byDay[key]) byDay[key] = [];
-      byDay[key].push(formatMeeting(m));
+      byDay[key].push(item);
+      return item;
     });
 
     return sendSuccess(res, 'Meetings fetched successfully', {
-      meetings: meetings.map(formatMeeting),
+      meetings: list,
       byDay
     });
   } catch (error) {
@@ -53,7 +61,7 @@ export const listMyMeetings = async (req, res) => {
   }
 };
 
-// @desc    Join meeting — marks present + returns zoom link
+// @desc    Join meeting — only when Live; marks present once
 // @route   POST /api/user/meetings/join
 export const joinMeeting = async (req, res) => {
   try {
@@ -74,7 +82,38 @@ export const joinMeeting = async (req, res) => {
       return sendError(res, 'This meeting has been cancelled', null, 400);
     }
 
-    const record = await Attendance.findOneAndUpdate(
+    if (meeting.status === 'completed') {
+      return sendError(res, 'This meeting is already completed. Attendance cannot be marked.', null, 400);
+    }
+
+    if (meeting.status !== 'live') {
+      return sendError(
+        res,
+        'Meeting is not live yet. You can mark attendance only when status is Live.',
+        { code: 'NOT_LIVE', status: meeting.status },
+        400
+      );
+    }
+
+    let record = await Attendance.findOne({
+      meetingId: meeting._id,
+      userId: req.user._id
+    });
+
+    if (record && record.status === 'present') {
+      return sendSuccess(res, 'Already attended', {
+        alreadyAttended: true,
+        zoomLink: meeting.zoomLink,
+        meeting: formatMeeting(meeting, 'present'),
+        attendance: {
+          id: record._id,
+          status: record.status,
+          joinedAt: record.joinedAt
+        }
+      });
+    }
+
+    record = await Attendance.findOneAndUpdate(
       { meetingId: meeting._id, userId: req.user._id },
       {
         $set: {
@@ -91,8 +130,9 @@ export const joinMeeting = async (req, res) => {
     );
 
     return sendSuccess(res, 'Attendance marked. Opening Zoom meeting...', {
+      alreadyAttended: false,
       zoomLink: meeting.zoomLink,
-      meeting: formatMeeting(meeting),
+      meeting: formatMeeting(meeting, 'present'),
       attendance: {
         id: record._id,
         status: record.status,
