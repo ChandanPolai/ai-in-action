@@ -2,9 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [react()],
-  base: mode === 'production' ? '/userapp/' : '/',
+  base: '/',
   build: {
     outDir: path.resolve(__dirname, '../ai-action-backend/userapp'),
     emptyOutDir: true
@@ -13,4 +13,4 @@ export default defineConfig(({ mode }) => ({
     port: 3001,
     open: true
   }
-}));
+});

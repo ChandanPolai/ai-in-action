@@ -74,21 +74,26 @@ const DashboardWrapper = () => {
   );
 };
 
-const App = () => (
-  <BrowserRouter>
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        path="/*"
-        element={
-          <ProtectedRoute>
-            <DashboardWrapper />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
-  </BrowserRouter>
-);
+const App = () => {
+  const rawBase = import.meta.env.BASE_URL || '/';
+  const basename = rawBase === '/' ? undefined : rawBase.replace(/\/$/, '');
+
+  return (
+    <BrowserRouter basename={basename}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <DashboardWrapper />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
 
 export default App;

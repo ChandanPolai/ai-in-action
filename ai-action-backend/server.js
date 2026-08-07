@@ -60,7 +60,8 @@ app.use('/uploads/complaints', express.static(path.join(__dirname, 'uploads/comp
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 app.use('/adminapp', express.static(path.join(__dirname, 'adminapp')));
-app.use('/userapp', express.static(path.join(__dirname, 'userapp')));
+// User app is served from domain root (not /userapp)
+app.use(express.static(path.join(__dirname, 'userapp'), { index: false }));
 
 const healthHandler = (req, res) => {
   return sendSuccess(res, 'AI in Action Backend API is running smoothly', {
@@ -90,7 +91,7 @@ app.use('/api/user/recordings', userRecordingRoutes);
 app.use('/api/user/courses', userCourseRoutes);
 app.use('/api/user/complaints', userComplaintRoutes);
 
-// SPA Fallbacks
+// Admin SPA fallback
 app.get(['/adminapp', '/adminapp/*'], (req, res) => {
   const adminIndex = path.join(__dirname, 'adminapp', 'index.html');
   if (fs.existsSync(adminIndex)) {
@@ -100,17 +101,37 @@ app.get(['/adminapp', '/adminapp/*'], (req, res) => {
   }
 });
 
-app.get(['/userapp', '/userapp/*'], (req, res) => {
-  const userIndex = path.join(__dirname, 'userapp', 'index.html');
-  if (fs.existsSync(userIndex)) {
-    res.sendFile(userIndex);
-  } else {
-    res.send('User application build not found. Run npm run build:user');
-  }
+// Old /userapp links → clean root URLs
+app.get('/userapp', (req, res) => res.redirect(301, '/'));
+app.use('/userapp', (req, res) => {
+  const rest = req.url.replace(/^\//, '');
+  res.redirect(301, `/${rest}`);
 });
 
-app.get('/', (req, res) => {
-  res.redirect('/adminapp/');
+// User SPA at domain root — so refresh on /login, /dashboard works
+// (without this, refresh returns JSON: Endpoint or Route not found)
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+
+  if (
+    req.path.startsWith('/api') ||
+    req.path.startsWith('/adminapp') ||
+    req.path.startsWith('/uploads') ||
+    req.path.startsWith('/public')
+  ) {
+    return next();
+  }
+
+  // If request is for a real static file that wasn't found, 404 JSON later
+  if (path.extname(req.path)) {
+    return next();
+  }
+
+  const userIndex = path.join(__dirname, 'userapp', 'index.html');
+  if (fs.existsSync(userIndex)) {
+    return res.sendFile(userIndex);
+  }
+  return res.status(404).send('User application build not found. Run npm run build:user');
 });
 
 app.use((req, res) => {
