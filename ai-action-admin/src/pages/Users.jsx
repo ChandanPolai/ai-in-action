@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Search, Pencil, Trash2, Power, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Power, FileSpreadsheet, Mail } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   fetchUsersThunk,
@@ -59,6 +59,7 @@ const UsersPage = () => {
   });
   const [sendCredentials, setSendCredentials] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [sendingAll, setSendingAll] = useState(false);
 
   const load = () => dispatch(fetchUsersThunk({ search, status, limit: 500 }));
 
@@ -111,8 +112,8 @@ const UsersPage = () => {
         await dispatch(updateUserThunk(payload)).unwrap();
         toast.success('User updated');
       } else {
-        await dispatch(createUserThunk(form)).unwrap();
-        toast.success('User created');
+        await dispatch(createUserThunk({ ...form, sendCredentials: true })).unwrap();
+        toast.success('User created — login credentials emailed');
       }
       setModalOpen(false);
       load();
@@ -141,6 +142,25 @@ const UsersPage = () => {
       load();
     } catch (err) {
       toast.error(err);
+    }
+  };
+
+  const handleSendCredentialsAll = async () => {
+    if (
+      !window.confirm(
+        'This will reset passwords for ALL active users and email new login credentials. Continue?'
+      )
+    ) {
+      return;
+    }
+    setSendingAll(true);
+    try {
+      const res = await postRequest('/admin/users/send-credentials-all', {});
+      toast.success(res.message || `Sent to ${res.data?.sent || 0} user(s)`);
+    } catch (err) {
+      toast.error(err.message || 'Failed to send credentials');
+    } finally {
+      setSendingAll(false);
     }
   };
 
@@ -251,6 +271,14 @@ const UsersPage = () => {
           <p className="text-sm text-slate-500">Create, import and manage course participants</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            icon={Mail}
+            onClick={handleSendCredentialsAll}
+            disabled={sendingAll}
+          >
+            {sendingAll ? 'Sending...' : 'Send Credentials to All'}
+          </Button>
           <Button variant="secondary" icon={FileSpreadsheet} onClick={openImport}>
             Import Excel
           </Button>
@@ -371,15 +399,9 @@ const UsersPage = () => {
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
           {!editing && (
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={form.sendCredentials}
-                onChange={(e) => setForm({ ...form, sendCredentials: e.target.checked })}
-                className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
-              />
-              Send login credentials via email
-            </label>
+            <p className="text-sm text-brand-700 bg-brand-50 border border-brand-100 rounded-lg px-3 py-2">
+              Login credentials will be emailed automatically when this user is created.
+            </p>
           )}
           <div className="flex gap-3 pt-4 sticky bottom-0 bg-white">
             <Button variant="ghost" fullWidth type="button" onClick={() => setModalOpen(false)}>Cancel</Button>

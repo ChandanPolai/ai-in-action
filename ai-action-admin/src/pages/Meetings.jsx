@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Pencil, Trash2, CheckCircle, Search, Radio, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, CheckCircle, Search, Radio, Filter, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 import {
   fetchMeetingsThunk,
   createMeetingThunk,
@@ -20,7 +21,8 @@ const emptyForm = {
   title: '',
   description: '',
   meetingDate: '',
-  meetingTime: '',
+  startTime: '',
+  endTime: '',
   zoomLink: '',
   dayNumber: 1,
   sessionNumber: 1,
@@ -31,6 +33,7 @@ const emptyForm = {
 
 const MeetingsPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { list, loading } = useSelector((state) => state.meetings);
   const { list: users } = useSelector((state) => state.users);
   const [modalOpen, setModalOpen] = useState(false);
@@ -41,8 +44,6 @@ const MeetingsPage = () => {
   const [filters, setFilters] = useState({
     search: '',
     status: 'all',
-    dayNumber: '',
-    sessionNumber: '',
     dateFrom: '',
     dateTo: ''
   });
@@ -50,8 +51,6 @@ const MeetingsPage = () => {
   const loadMeetings = (next = filters) => {
     const payload = { status: next.status || 'all' };
     if (next.search.trim()) payload.search = next.search.trim();
-    if (next.dayNumber) payload.dayNumber = Number(next.dayNumber);
-    if (next.sessionNumber) payload.sessionNumber = Number(next.sessionNumber);
     if (next.dateFrom) payload.dateFrom = next.dateFrom;
     if (next.dateTo) payload.dateTo = next.dateTo;
     dispatch(fetchMeetingsThunk(payload));
@@ -92,7 +91,8 @@ const MeetingsPage = () => {
       title: m.title,
       description: m.description || '',
       meetingDate: m.meetingDate ? new Date(m.meetingDate).toISOString().slice(0, 10) : '',
-      meetingTime: m.meetingTime || '',
+      startTime: m.startTime || m.meetingTime || '',
+      endTime: m.endTime || '',
       zoomLink: m.zoomLink || '',
       dayNumber: m.dayNumber || 1,
       sessionNumber: m.sessionNumber || 1,
@@ -141,6 +141,14 @@ const MeetingsPage = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!form.startTime || !form.endTime) {
+      toast.error('Start time and end time are required');
+      return;
+    }
+    if (form.endTime <= form.startTime) {
+      toast.error('End time must be after start time');
+      return;
+    }
     setSaving(true);
     try {
       if (editing) {
@@ -197,8 +205,6 @@ const MeetingsPage = () => {
     const reset = {
       search: '',
       status: 'all',
-      dayNumber: '',
-      sessionNumber: '',
       dateFrom: '',
       dateTo: ''
     };
@@ -265,23 +271,7 @@ const MeetingsPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Input
-              label="Day number"
-              type="number"
-              min={1}
-              placeholder="e.g. 1"
-              value={filters.dayNumber}
-              onChange={(e) => setFilters({ ...filters, dayNumber: e.target.value })}
-            />
-            <Input
-              label="Session number"
-              type="number"
-              min={1}
-              placeholder="e.g. 1"
-              value={filters.sessionNumber}
-              onChange={(e) => setFilters({ ...filters, sessionNumber: e.target.value })}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Date from"
               type="date"
@@ -322,7 +312,11 @@ const MeetingsPage = () => {
             <p className="text-sm text-slate-500 line-clamp-2 mb-3">{m.description || 'No description'}</p>
             <div className="text-xs text-slate-600 space-y-1 mb-4">
               <p>
-                {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : '—'} · {m.meetingTime}
+                {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : '—'}
+              </p>
+              <p>
+                {m.startTime || m.meetingTime || '—'}
+                {m.endTime ? ` – ${m.endTime}` : ''}
               </p>
               <p>{(m.assignedUsers || []).length} users assigned</p>
             </div>
@@ -333,6 +327,13 @@ const MeetingsPage = () => {
                 title="Edit"
               >
                 <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => navigate(`/reviews?meetingId=${m.id}`)}
+                className="p-2 rounded-lg hover:bg-amber-50 text-slate-500 hover:text-amber-600"
+                title="View reviews"
+              >
+                <Star className="w-4 h-4" />
               </button>
               {m.status === 'upcoming' && (
                 <button
@@ -376,10 +377,14 @@ const MeetingsPage = () => {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Date" type="date" required value={form.meetingDate} onChange={(e) => setForm({ ...form, meetingDate: e.target.value })} />
-            <Input label="Time" type="time" required value={form.meetingTime} onChange={(e) => setForm({ ...form, meetingTime: e.target.value })} />
+            <Input label="Start Time" type="time" required value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+            <Input label="End Time" type="time" required value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
           </div>
+          <p className="text-xs text-slate-500 -mt-2">
+            When end time passes, the meeting auto-completes and attendees get a review email.
+          </p>
           <Input label="Zoom Link" required value={form.zoomLink} onChange={(e) => setForm({ ...form, zoomLink: e.target.value })} placeholder="https://zoom.us/j/..." />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Day #" type="number" min={1} value={form.dayNumber} onChange={(e) => setForm({ ...form, dayNumber: Number(e.target.value) })} />

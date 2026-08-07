@@ -7,6 +7,7 @@ import {
   Clapperboard,
   BookOpen,
   MessageSquareWarning,
+  Star,
   User,
   ChevronRight,
   ChevronLeft,
@@ -17,6 +18,7 @@ import {
 export const userNavItems = [
   { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
   { id: 'meetings', label: 'My Meetings', icon: Video },
+  { id: 'reviews', label: 'My Reviews', icon: Star },
   { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { id: 'recordings', label: 'Recordings', icon: Clapperboard },
   { id: 'courses', label: 'Courses', icon: BookOpen },

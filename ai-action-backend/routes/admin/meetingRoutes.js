@@ -5,7 +5,8 @@ import {
   getMeeting,
   updateMeeting,
   deleteMeeting,
-  markMeetingCompleted
+  markMeetingCompleted,
+  listMeetingReviews
 } from '../../controllers/admin/meetingController.js';
 import { verifyAdminToken } from '../../middlewares/adminAuth.js';
 
@@ -19,5 +20,6 @@ router.post('/get', getMeeting);
 router.post('/update', updateMeeting);
 router.post('/delete', deleteMeeting);
 router.post('/mark-completed', markMeetingCompleted);
+router.post('/reviews', listMeetingReviews);
 
 export default router;

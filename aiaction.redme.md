@@ -203,3 +203,16 @@ white and blue theme i want use tailkwind css full mobile frilendy acces i want 
 
 -------------------------------
 ok great abhi he naa 
+
+----------------------------
+
+admin side
+----------
+users section me 1 btn dedo jis per clikakrke sabkocrainls unka bhej paye ok please au jais ehkisisuser ka account create ho to 
+tabhiusk passmailchallajaye ok ...
+
+meetng me sirf time likha he aap h naa start toime end time rakhdo jais ehitimgkatatm houtoitc meetingcompletet kardena ok simple.
+
+users ko mymeeting me hi reviw ka 1 butuon dedo jisper clikkarne se ek page khulegaajaj pr wo har meemting wise reviw de paye ahme har meetingwis ereviw lena he smsmajagyenaa 
+
+aur jais ehimeetingkahatm hoga naa automic sabho komilchlalajanchiye reviw dedo is meetigka smsmajagyenaa jojoattemd hua hogha ok 

@@ -9,6 +9,7 @@ import fs from 'fs';
 import connectDB from './config/db.js';
 import { sendSuccess } from './utils/apiResponse.js';
 import { apiLimiter, authLimiter } from './middlewares/rateLimiter.js';
+import { runMeetingScheduleJob } from './utils/meetingSchedule.js';
 
 import adminAuthRoutes from './routes/admin/authRoutes.js';
 import adminUserRoutes from './routes/admin/userRoutes.js';
@@ -111,6 +112,7 @@ const userSpaPaths = [
   '/reset-password',
   '/dashboard',
   '/meetings',
+  '/reviews',
   '/attendance',
   '/recordings',
   '/courses',
@@ -136,3 +138,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 AI in Action server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
+
+// Auto live / auto complete meetings every minute
+runMeetingScheduleJob();
+setInterval(runMeetingScheduleJob, 60 * 1000);

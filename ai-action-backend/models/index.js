@@ -9,6 +9,7 @@ import VideoPlayRequest from './VideoPlayRequest.js';
 import AppSettings from './AppSettings.js';
 import Course from './Course.js';
 import Complaint from './Complaint.js';
+import MeetingReview from './MeetingReview.js';
 
 export {
   Admin,
@@ -21,7 +22,8 @@ export {
   VideoPlayRequest,
   AppSettings,
   Course,
-  Complaint
+  Complaint,
+  MeetingReview
 };
 
 export default {
@@ -35,5 +37,6 @@ export default {
   VideoPlayRequest,
   AppSettings,
   Course,
-  Complaint
+  Complaint,
+  MeetingReview
 };

@@ -154,6 +154,33 @@ export const sendPasswordResetEmail = async (userEmail, name, resetToken, userId
   });
 };
 
+export const sendMeetingReviewRequestEmail = async ({
+  userEmail,
+  name,
+  meetingTitle,
+  meetingId,
+  userId = null
+}) => {
+  const frontendUrl = (process.env.USER_APP_URL || 'http://localhost:3001').replace(/\/$/, '');
+  const meetingsBase = frontendUrl.includes('/userapp')
+    ? `${frontendUrl}/meetings`
+    : `${frontendUrl}/userapp/meetings`;
+  const reviewUrl = `${meetingsBase}?reviewMeetingId=${meetingId}`;
+
+  return await sendEmail({
+    to: userEmail,
+    subject: `Please review: ${meetingTitle}`,
+    templateName: 'meeting-review-request',
+    templateData: {
+      name,
+      meetingTitle,
+      reviewUrl
+    },
+    userId,
+    type: 'meeting-review'
+  });
+};
+
 /**
  * Future WhatsApp hook — logs as skipped until provider is wired
  */
@@ -175,5 +202,6 @@ export default {
   sendEmail,
   sendLoginCredentialsEmail,
   sendPasswordResetEmail,
+  sendMeetingReviewRequestEmail,
   sendWhatsAppNotification
 };

@@ -18,7 +18,17 @@ const meetingSchema = new mongoose.Schema(
     },
     meetingTime: {
       type: String,
-      required: [true, 'Meeting time is required'],
+      required: [true, 'Meeting start time is required'],
+      trim: true
+    },
+    startTime: {
+      type: String,
+      default: '',
+      trim: true
+    },
+    endTime: {
+      type: String,
+      default: '',
       trim: true
     },
     zoomLink: {
@@ -49,6 +59,10 @@ const meetingSchema = new mongoose.Schema(
       type: String,
       enum: ['upcoming', 'live', 'completed', 'cancelled'],
       default: 'upcoming'
+    },
+    reviewEmailSent: {
+      type: Boolean,
+      default: false
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

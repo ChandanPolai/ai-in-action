@@ -11,6 +11,7 @@ import RecordingsPage from './pages/Recordings';
 import PlayRequestsPage from './pages/PlayRequests';
 import CoursesPage from './pages/Courses';
 import ComplaintsPage from './pages/Complaints';
+import ReviewsPage from './pages/Reviews';
 import SettingsPage from './pages/Settings';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -45,6 +46,8 @@ const DashboardWrapper = () => {
         return <UsersPage />;
       case 'meetings':
         return <MeetingsPage />;
+      case 'reviews':
+        return <ReviewsPage />;
       case 'attendance':
         return <AttendancePage />;
       case 'recordings':

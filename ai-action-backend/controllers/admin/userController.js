@@ -45,7 +45,6 @@ export const createUser = async (req, res) => {
       secondaryMobileNumber = '',
       countryCode,
       password,
-      sendCredentials = true,
       canUpdateProfile = true
     } = req.body;
 
@@ -72,13 +71,13 @@ export const createUser = async (req, res) => {
       profilePhoto: req.file ? `/uploads/users/${req.file.filename}` : ''
     });
 
-    if (sendCredentials !== false && sendCredentials !== 'false') {
-      await sendLoginCredentialsEmail(user.email, user.name, plainPassword, user._id);
-    }
+    // Always email login credentials when account is created
+    await sendLoginCredentialsEmail(user.email, user.name, plainPassword, user._id);
 
-    return sendSuccess(res, 'User created successfully', {
+    return sendSuccess(res, 'User created successfully. Login credentials emailed.', {
       user: formatUser(user),
-      temporaryPassword: password ? undefined : plainPassword
+      temporaryPassword: password ? undefined : plainPassword,
+      credentialsEmailed: true
     }, 201);
   } catch (error) {
     return sendError(res, error.message, null, 500);
@@ -372,6 +371,43 @@ export const importUsers = async (req, res) => {
   }
 };
 
+// @desc    Reset password for all active users and email credentials
+// @route   POST /api/admin/users/send-credentials-all
+export const sendCredentialsToAll = async (req, res) => {
+  try {
+    const users = await User.find({ isDeleted: false, isActive: true });
+    let sent = 0;
+    let failed = 0;
+    const errors = [];
+
+    for (const user of users) {
+      try {
+        const plainPassword = generateTempPassword();
+        user.password = await hashPassword(plainPassword);
+        await user.save();
+        const result = await sendLoginCredentialsEmail(user.email, user.name, plainPassword, user._id);
+        if (result?.success) sent += 1;
+        else {
+          failed += 1;
+          errors.push({ email: user.email, error: result?.error || 'send failed' });
+        }
+      } catch (err) {
+        failed += 1;
+        errors.push({ email: user.email, error: err.message });
+      }
+    }
+
+    return sendSuccess(res, `Credentials emailed to ${sent} user(s)`, {
+      total: users.length,
+      sent,
+      failed,
+      errors: errors.slice(0, 20)
+    });
+  } catch (error) {
+    return sendError(res, error.message, null, 500);
+  }
+};
+
 export default {
   createUser,
   listUsers,
@@ -381,5 +417,6 @@ export default {
   toggleUserStatus,
   resetUserPassword,
   importUsersPreview,
-  importUsers
+  importUsers,
+  sendCredentialsToAll
 };

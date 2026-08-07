@@ -7,6 +7,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import MeetingsPage from './pages/Meetings';
+import MyReviewsPage from './pages/MyReviews';
 import AttendancePage from './pages/Attendance';
 import RecordingsPage from './pages/Recordings';
 import CoursesPage from './pages/Courses';
@@ -43,6 +44,8 @@ const DashboardWrapper = () => {
     switch (activeTab) {
       case 'meetings':
         return <MeetingsPage />;
+      case 'reviews':
+        return <MyReviewsPage />;
       case 'attendance':
         return <AttendancePage />;
       case 'recordings':

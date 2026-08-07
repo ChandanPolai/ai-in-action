@@ -21,6 +21,7 @@ const notificationSchema = new mongoose.Schema(
       enum: [
         'login-credentials',
         'meeting-reminder',
+        'meeting-review',
         'attendance',
         'recording-access',
         'password-reset',
