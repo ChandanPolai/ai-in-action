@@ -1,0 +1,13 @@
+node_modules/
+uploads/admin/*
+uploads/users/*
+uploads/recordings/*
+!uploads/admin/.gitkeep
+!uploads/users/.gitkeep
+!uploads/recordings/.gitkeep
+adminapp/*
+userapp/*
+!adminapp/.gitkeep
+!userapp/.gitkeep
+*.log
+.DS_Store
