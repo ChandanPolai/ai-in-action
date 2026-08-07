@@ -137,6 +137,23 @@ export const sendLoginCredentialsEmail = async (userEmail, name, password, userI
   });
 };
 
+export const sendPasswordResetEmail = async (userEmail, name, resetToken, userId = null) => {
+  const frontendUrl = process.env.USER_APP_URL || 'http://localhost:3001';
+  const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+  return await sendEmail({
+    to: userEmail,
+    subject: 'AI in Action - Reset Your Password',
+    templateName: 'reset-password',
+    templateData: {
+      name,
+      resetUrl
+    },
+    userId,
+    type: 'password-reset'
+  });
+};
+
 /**
  * Future WhatsApp hook — logs as skipped until provider is wired
  */
@@ -157,5 +174,6 @@ export const sendWhatsAppNotification = async ({ userId, mobile, message, type =
 export default {
   sendEmail,
   sendLoginCredentialsEmail,
+  sendPasswordResetEmail,
   sendWhatsAppNotification
 };

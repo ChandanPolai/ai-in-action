@@ -92,3 +92,48 @@ body {
     radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.1), transparent 45%),
     linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
 }
+
+/* Student portal login — distinct geometric pattern (different from admin) */
+.student-auth-bg {
+  background-color: #0b1f44;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(96, 165, 250, 0.35), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(37, 99, 235, 0.4), transparent 32%),
+    radial-gradient(circle at 70% 78%, rgba(14, 165, 233, 0.22), transparent 36%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%),
+    linear-gradient(225deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%),
+    linear-gradient(315deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%);
+  background-size:
+    auto,
+    auto,
+    auto,
+    48px 48px,
+    48px 48px,
+    48px 48px,
+    48px 48px;
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    0 0,
+    24px 0,
+    0 24px,
+    24px 24px;
+}
+
+.student-auth-panel {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.45);
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(100%); opacity: 0.85; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-drawer-in {
+  animation: drawer-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}

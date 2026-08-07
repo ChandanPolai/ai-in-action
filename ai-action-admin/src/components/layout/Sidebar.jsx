@@ -6,6 +6,7 @@ import {
   Video,
   CalendarCheck,
   Clapperboard,
+  Inbox,
   Settings,
   ChevronRight,
   ChevronLeft,
@@ -19,6 +20,7 @@ export const adminNavItems = [
   { id: 'meetings', label: 'Meetings', icon: Video },
   { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { id: 'recordings', label: 'Recordings', icon: Clapperboard },
+  { id: 'play-requests', label: 'Play Requests', icon: Inbox },
   { id: 'settings', label: 'Settings', icon: Settings }
 ];
 

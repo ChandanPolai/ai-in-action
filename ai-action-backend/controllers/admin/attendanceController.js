@@ -14,24 +14,44 @@ const formatAttendance = (a) => ({
   updatedAt: a.updatedAt
 });
 
+const resolveMeetingIdsByDate = async ({ dateFrom, dateTo, meetingId }) => {
+  const meetingQuery = { isDeleted: false };
+
+  if (meetingId) {
+    meetingQuery._id = meetingId;
+  }
+
+  if (dateFrom || dateTo) {
+    meetingQuery.meetingDate = {};
+    if (dateFrom) meetingQuery.meetingDate.$gte = moment(dateFrom).startOf('day').toDate();
+    if (dateTo) meetingQuery.meetingDate.$lte = moment(dateTo).endOf('day').toDate();
+  }
+
+  if (!dateFrom && !dateTo && !meetingId) {
+    return null;
+  }
+
+  if (!dateFrom && !dateTo && meetingId) {
+    return [meetingId];
+  }
+
+  const meetings = await Meeting.find(meetingQuery).select('_id');
+  return meetings.map((m) => m._id);
+};
+
 // @desc    List attendance with filters
 // @route   POST /api/admin/attendance/list
 export const listAttendance = async (req, res) => {
   try {
-    const { meetingId, userId, status, dateFrom, dateTo, page = 1, limit = 100 } = req.body;
+    const { meetingId, userId, status, dateFrom, dateTo, page = 1, limit = 200 } = req.body;
     const query = {};
 
-    if (meetingId) query.meetingId = meetingId;
     if (userId) query.userId = userId;
     if (status && ['present', 'absent'].includes(status)) query.status = status;
 
-    if (dateFrom || dateTo) {
-      const meetingQuery = { isDeleted: false };
-      if (dateFrom) meetingQuery.meetingDate = { ...(meetingQuery.meetingDate || {}), $gte: moment(dateFrom).startOf('day').toDate() };
-      if (dateTo) meetingQuery.meetingDate = { ...(meetingQuery.meetingDate || {}), $lte: moment(dateTo).endOf('day').toDate() };
-
-      const meetings = await Meeting.find(meetingQuery).select('_id');
-      query.meetingId = { $in: meetings.map((m) => m._id) };
+    if (dateFrom || dateTo || meetingId) {
+      const meetingIds = await resolveMeetingIdsByDate({ dateFrom, dateTo, meetingId });
+      query.meetingId = { $in: meetingIds || [] };
     }
 
     const skip = (Math.max(1, Number(page)) - 1) * Number(limit);
@@ -45,8 +65,17 @@ export const listAttendance = async (req, res) => {
       Attendance.countDocuments(query)
     ]);
 
+    const present = records.filter((r) => r.status === 'present').length;
+    const absent = records.filter((r) => r.status === 'absent').length;
+
     return sendSuccess(res, 'Attendance fetched successfully', {
       records: records.map(formatAttendance),
+      summary: {
+        present,
+        absent,
+        total: records.length,
+        presentRate: records.length ? Math.round((present / records.length) * 100) : 0
+      },
       total,
       page: Number(page),
       limit: Number(limit)
@@ -145,13 +174,21 @@ export const updateAttendance = async (req, res) => {
 // @route   POST /api/admin/attendance/history
 export const getAttendanceHistory = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId, dateFrom, dateTo, status } = req.body;
     if (!userId) return sendError(res, 'userId is required', null, 400);
 
     const user = await User.findOne({ _id: userId, isDeleted: false }).select('name email');
     if (!user) return sendError(res, 'User not found', null, 404);
 
-    const records = await Attendance.find({ userId })
+    const query = { userId };
+    if (status && ['present', 'absent'].includes(status)) query.status = status;
+
+    if (dateFrom || dateTo) {
+      const meetingIds = await resolveMeetingIdsByDate({ dateFrom, dateTo });
+      query.meetingId = { $in: meetingIds || [] };
+    }
+
+    const records = await Attendance.find(query)
       .populate('meetingId', 'title meetingDate meetingTime dayNumber sessionNumber status')
       .sort({ createdAt: -1 });
 

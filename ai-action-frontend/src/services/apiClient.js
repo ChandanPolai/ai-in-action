@@ -22,7 +22,10 @@ export const postRequest = async (endpoint, data = {}, customHeaders = {}) => {
     const result = await response.json();
 
     if (!response.ok || !result.status) {
-      throw new Error(result.message || 'API Request Failed');
+      const err = new Error(result.message || 'API Request Failed');
+      err.data = result.data || null;
+      err.code = result.data?.code || null;
+      throw err;
     }
 
     return result;

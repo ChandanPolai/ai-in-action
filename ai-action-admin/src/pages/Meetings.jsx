@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Pencil, Trash2, CheckCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, CheckCircle, Search } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   fetchMeetingsThunk,
@@ -14,7 +14,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
-import Modal from '../components/ui/Modal';
+import Drawer from '../components/ui/Drawer';
 
 const emptyForm = {
   title: '',
@@ -37,20 +37,39 @@ const MeetingsPage = () => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
 
   useEffect(() => {
     dispatch(fetchMeetingsThunk({}));
-    dispatch(fetchUsersThunk({ status: 'active' }));
+    dispatch(fetchUsersThunk({ status: 'active', limit: 500 }));
   }, [dispatch]);
+
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (u) =>
+        u.name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.mobileNumber?.includes(q)
+    );
+  }, [users, userSearch]);
+
+  const assignedSet = useMemo(
+    () => new Set((form.assignedUsers || []).map(String)),
+    [form.assignedUsers]
+  );
 
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    setUserSearch('');
     setModalOpen(true);
   };
 
   const openEdit = (m) => {
     setEditing(m);
+    setUserSearch('');
     setForm({
       title: m.title,
       description: m.description || '',
@@ -74,6 +93,32 @@ const MeetingsPage = () => {
       else set.add(id);
       return { ...prev, assignedUsers: [...set] };
     });
+  };
+
+  const selectAllFiltered = () => {
+    setForm((prev) => {
+      const set = new Set(prev.assignedUsers.map(String));
+      filteredUsers.forEach((u) => set.add(String(u.id)));
+      return { ...prev, assignedUsers: [...set] };
+    });
+  };
+
+  const clearAllFiltered = () => {
+    setForm((prev) => {
+      const remove = new Set(filteredUsers.map((u) => String(u.id)));
+      return {
+        ...prev,
+        assignedUsers: prev.assignedUsers.filter((id) => !remove.has(String(id)))
+      };
+    });
+  };
+
+  const selectAllUsers = () => {
+    setForm((prev) => ({ ...prev, assignedUsers: users.map((u) => u.id) }));
+  };
+
+  const clearAllUsers = () => {
+    setForm((prev) => ({ ...prev, assignedUsers: [] }));
   };
 
   const handleSave = async (e) => {
@@ -167,7 +212,7 @@ const MeetingsPage = () => {
         ))}
       </div>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Meeting' : 'Create Meeting'} size="lg">
+      <Drawer isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Meeting' : 'Create Meeting'} size="lg">
         <form onSubmit={handleSave} className="space-y-4">
           <Input label="Title" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <div>
@@ -184,7 +229,7 @@ const MeetingsPage = () => {
             <Input label="Time" type="time" required value={form.meetingTime} onChange={(e) => setForm({ ...form, meetingTime: e.target.value })} />
           </div>
           <Input label="Zoom Link" required value={form.zoomLink} onChange={(e) => setForm({ ...form, zoomLink: e.target.value })} placeholder="https://zoom.us/j/..." />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Input label="Day #" type="number" min={1} value={form.dayNumber} onChange={(e) => setForm({ ...form, dayNumber: Number(e.target.value) })} />
             <Input label="Session #" type="number" min={1} value={form.sessionNumber} onChange={(e) => setForm({ ...form, sessionNumber: Number(e.target.value) })} />
             <div>
@@ -206,29 +251,69 @@ const MeetingsPage = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Assign Users</label>
-            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2">
-              {users.length === 0 && <p className="text-xs text-slate-400">No active users</p>}
-              {users.map((u) => (
-                <label key={u.id} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.assignedUsers.map(String).includes(String(u.id))}
-                    onChange={() => toggleUser(u.id)}
-                    className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
-                  />
-                  {u.name} <span className="text-slate-400 text-xs">({u.email})</span>
-                </label>
-              ))}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                Assign Users <span className="normal-case text-brand-600">({assignedSet.size} selected)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={selectAllUsers} className="text-xs font-semibold text-brand-600 hover:underline">
+                  Select all ({users.length})
+                </button>
+                <button type="button" onClick={clearAllUsers} className="text-xs font-semibold text-slate-500 hover:underline">
+                  Clear all
+                </button>
+              </div>
+            </div>
+
+            <Input
+              icon={Search}
+              placeholder="Search users by name, email, mobile..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+            />
+
+            {userSearch.trim() && (
+              <div className="flex gap-3 mt-2 mb-1">
+                <button type="button" onClick={selectAllFiltered} className="text-xs font-semibold text-brand-600 hover:underline">
+                  Select filtered ({filteredUsers.length})
+                </button>
+                <button type="button" onClick={clearAllFiltered} className="text-xs font-semibold text-slate-500 hover:underline">
+                  Clear filtered
+                </button>
+              </div>
+            )}
+
+            <div className="mt-3 max-h-56 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-1">
+              {filteredUsers.length === 0 && <p className="text-xs text-slate-400">No users found</p>}
+              {filteredUsers.map((u) => {
+                const checked = assignedSet.has(String(u.id));
+                return (
+                  <label
+                    key={u.id}
+                    className={`flex items-center gap-2 text-sm cursor-pointer rounded-lg px-2 py-1.5 ${
+                      checked ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleUser(u.id)}
+                      className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
+                    />
+                    <span className="font-medium truncate">{u.name}</span>
+                    <span className="text-slate-400 text-xs truncate">({u.email})</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-4">
             <Button variant="ghost" fullWidth type="button" onClick={() => setModalOpen(false)}>Cancel</Button>
             <Button fullWidth type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Meeting'}</Button>
           </div>
         </form>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

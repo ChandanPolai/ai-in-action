@@ -4,7 +4,7 @@ import { User } from '../models/index.js';
 
 export const verifyUserToken = async (req, res, next) => {
   try {
-    let token = req.headers['usertoken'] || req.body.userToken;
+    let token = req.headers['usertoken'] || req.body?.userToken || req.query?.usertoken || req.query?.token;
 
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];

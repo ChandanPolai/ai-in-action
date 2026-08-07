@@ -8,6 +8,7 @@ import UsersPage from './pages/Users';
 import MeetingsPage from './pages/Meetings';
 import AttendancePage from './pages/Attendance';
 import RecordingsPage from './pages/Recordings';
+import PlayRequestsPage from './pages/PlayRequests';
 import SettingsPage from './pages/Settings';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -46,6 +47,8 @@ const DashboardWrapper = () => {
         return <AttendancePage />;
       case 'recordings':
         return <RecordingsPage />;
+      case 'play-requests':
+        return <PlayRequestsPage />;
       case 'settings':
         return <SettingsPage />;
       default:

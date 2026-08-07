@@ -4,6 +4,9 @@ import Meeting from './Meeting.js';
 import Attendance from './Attendance.js';
 import Recording from './Recording.js';
 import Notification from './Notification.js';
+import VideoWatchLog from './VideoWatchLog.js';
+import VideoPlayRequest from './VideoPlayRequest.js';
+import AppSettings from './AppSettings.js';
 
 export {
   Admin,
@@ -11,7 +14,10 @@ export {
   Meeting,
   Attendance,
   Recording,
-  Notification
+  Notification,
+  VideoWatchLog,
+  VideoPlayRequest,
+  AppSettings
 };
 
 export default {
@@ -20,5 +26,8 @@ export default {
   Meeting,
   Attendance,
   Recording,
-  Notification
+  Notification,
+  VideoWatchLog,
+  VideoPlayRequest,
+  AppSettings
 };

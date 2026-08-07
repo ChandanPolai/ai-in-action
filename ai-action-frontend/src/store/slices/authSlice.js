@@ -10,9 +10,13 @@ import {
 
 export const loginUserThunk = createAsyncThunk(
   'auth/loginUser',
-  async ({ email, password }, { rejectWithValue }) => {
+  async ({ identifier, email, password }, { rejectWithValue }) => {
     try {
-      const response = await postRequest('/user/auth/login', { email, password });
+      const response = await postRequest('/user/auth/login', {
+        identifier: identifier || email,
+        email: identifier || email,
+        password
+      });
       if (response.status && response.data?.userToken) {
         setUserToken(response.data.userToken);
         setUserData(response.data.user);

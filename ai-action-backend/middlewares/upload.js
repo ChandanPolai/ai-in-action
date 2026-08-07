@@ -10,7 +10,9 @@ const uploadAdminDir = path.join(__dirname, '../uploads/admin');
 const uploadUserDir = path.join(__dirname, '../uploads/users');
 const uploadRecordingDir = path.join(__dirname, '../uploads/recordings');
 
-[uploadAdminDir, uploadUserDir, uploadRecordingDir].forEach((dir) => {
+const uploadExcelDir = path.join(__dirname, '../uploads/excel');
+
+[uploadAdminDir, uploadUserDir, uploadRecordingDir, uploadExcelDir].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -61,8 +63,32 @@ export const uploadRecordingVideo = multer({
   limits: { fileSize: 500 * 1024 * 1024 }
 });
 
+const excelFilter = (req, file, cb) => {
+  const allowed = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'text/csv',
+    'application/csv',
+    'text/plain',
+    'application/octet-stream'
+  ];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowed.includes(file.mimetype) || ['.xlsx', '.xls', '.csv'].includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only Excel/CSV files are allowed (.xlsx, .xls, .csv)'), false);
+  }
+};
+
+export const uploadExcelFile = multer({
+  storage: makeStorage(uploadExcelDir, 'users-excel'),
+  fileFilter: excelFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
 export default {
   uploadAdminAvatar,
   uploadUserAvatar,
-  uploadRecordingVideo
+  uploadRecordingVideo,
+  uploadExcelFile
 };

@@ -13,9 +13,10 @@ const ProfilePage = () => {
   const [form, setForm] = useState({
     name: user?.name || '',
     mobileNumber: user?.mobileNumber || '',
+    secondaryMobileNumber: user?.secondaryMobileNumber || '',
     countryCode: user?.countryCode || '+91'
   });
-  const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '' });
+  const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [saving, setSaving] = useState(false);
 
   const saveProfile = async (e) => {
@@ -38,10 +39,21 @@ const ProfilePage = () => {
 
   const changePassword = async (e) => {
     e.preventDefault();
+    if (passwords.newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
     setSaving(true);
     try {
-      await postRequest('/user/auth/change-password', passwords);
-      setPasswords({ currentPassword: '', newPassword: '' });
+      await postRequest('/user/auth/change-password', {
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword
+      });
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
       toast.success('Password changed');
     } catch (err) {
       toast.error(err.message);
@@ -87,6 +99,13 @@ const ProfilePage = () => {
               />
             </div>
           </div>
+          <Input
+            label="Secondary Mobile"
+            disabled={!user?.canUpdateProfile}
+            placeholder="Optional"
+            value={form.secondaryMobileNumber}
+            onChange={(e) => setForm({ ...form, secondaryMobileNumber: e.target.value })}
+          />
           {user?.canUpdateProfile && (
             <Button type="submit" disabled={saving}>Save Profile</Button>
           )}
@@ -108,6 +127,13 @@ const ProfilePage = () => {
             required
             value={passwords.newPassword}
             onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+          />
+          <Input
+            label="Confirm New Password"
+            type="password"
+            required
+            value={passwords.confirmPassword}
+            onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
           />
           <Button type="submit" disabled={saving}>Update Password</Button>
         </form>

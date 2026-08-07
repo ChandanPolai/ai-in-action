@@ -50,7 +50,7 @@ const Login = () => {
             name="email"
             icon={Mail}
             required
-            placeholder="admin@gmail.com"
+            placeholder="Enter email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
@@ -67,9 +67,6 @@ const Login = () => {
           <Button type="submit" fullWidth disabled={loading} size="lg">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
           </Button>
-          <p className="text-center text-xs text-slate-400 pt-2">
-            Default: admin@gmail.com / 123456
-          </p>
         </form>
       </div>
     </div>

@@ -1,6 +1,8 @@
 import express from 'express';
 import {
   userLogin,
+  forgotPassword,
+  resetPassword,
   getUserProfile,
   updateUserProfile,
   changeUserPassword
@@ -11,6 +13,8 @@ import { uploadUserAvatar } from '../../middlewares/upload.js';
 const router = express.Router();
 
 router.post('/login', userLogin);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.post('/me', verifyUserToken, getUserProfile);
 router.post('/update-profile', verifyUserToken, uploadUserAvatar.single('profilePhoto'), updateUserProfile);
 router.post('/change-password', verifyUserToken, changeUserPassword);

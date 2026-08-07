@@ -36,9 +36,10 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.use('/api/', apiLimiter);
-app.use('/api/admin/auth/', authLimiter);
-app.use('/api/user/auth/', authLimiter);
+// Rate limiters temporarily disabled
+// app.use('/api/', apiLimiter);
+// app.use('/api/admin/auth/', authLimiter);
+// app.use('/api/user/auth/', authLimiter);
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -48,7 +49,8 @@ if (process.env.NODE_ENV === 'development') {
 
 app.use('/uploads/admin', express.static(path.join(__dirname, 'uploads/admin')));
 app.use('/uploads/users', express.static(path.join(__dirname, 'uploads/users')));
-app.use('/uploads/recordings', express.static(path.join(__dirname, 'uploads/recordings')));
+// Recordings are served only via authenticated stream — no public download URL
+// app.use('/uploads/recordings', express.static(path.join(__dirname, 'uploads/recordings')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 app.use('/adminapp', express.static(path.join(__dirname, 'adminapp')));

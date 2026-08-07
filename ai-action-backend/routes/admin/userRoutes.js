@@ -6,10 +6,12 @@ import {
   updateUser,
   deleteUser,
   toggleUserStatus,
-  resetUserPassword
+  resetUserPassword,
+  importUsersPreview,
+  importUsers
 } from '../../controllers/admin/userController.js';
 import { verifyAdminToken } from '../../middlewares/adminAuth.js';
-import { uploadUserAvatar } from '../../middlewares/upload.js';
+import { uploadUserAvatar, uploadExcelFile } from '../../middlewares/upload.js';
 
 const router = express.Router();
 
@@ -22,5 +24,7 @@ router.post('/update', uploadUserAvatar.single('profilePhoto'), updateUser);
 router.post('/delete', deleteUser);
 router.post('/toggle-status', toggleUserStatus);
 router.post('/reset-password', resetUserPassword);
+router.post('/import-preview', uploadExcelFile.single('file'), importUsersPreview);
+router.post('/import', importUsers);
 
 export default router;

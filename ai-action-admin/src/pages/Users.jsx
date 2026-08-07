@@ -1,30 +1,39 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Search, Pencil, Trash2, KeyRound, Power } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Power, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   fetchUsersThunk,
   createUserThunk,
   updateUserThunk,
   deleteUserThunk,
-  toggleUserStatusThunk,
-  resetPasswordThunk
+  toggleUserStatusThunk
 } from '../store/slices/usersSlice';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
-import Modal from '../components/ui/Modal';
-import { imageUrl } from '../services/apiClient';
+import Drawer from '../components/ui/Drawer';
+import { imageUrl, postRequest } from '../services/apiClient';
 
 const emptyForm = {
   name: '',
   email: '',
   mobileNumber: '',
+  secondaryMobileNumber: '',
   countryCode: '+91',
   password: '',
   sendCredentials: true
 };
+
+const FIELD_OPTIONS = [
+  { key: 'name', label: 'Name *', required: true },
+  { key: 'email', label: 'Email *', required: true },
+  { key: 'mobileNumber', label: 'Mobile *', required: true },
+  { key: 'secondaryMobileNumber', label: 'Secondary Mobile', required: false },
+  { key: 'countryCode', label: 'Country Code', required: false },
+  { key: 'password', label: 'Password', required: false }
+];
 
 const UsersPage = () => {
   const dispatch = useDispatch();
@@ -32,11 +41,26 @@ const UsersPage = () => {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const load = () => dispatch(fetchUsersThunk({ search, status }));
+  const [importStep, setImportStep] = useState(1);
+  const [importing, setImporting] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [mapping, setMapping] = useState({
+    name: '',
+    email: '',
+    mobileNumber: '',
+    secondaryMobileNumber: '',
+    countryCode: '',
+    password: ''
+  });
+  const [sendCredentials, setSendCredentials] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  const load = () => dispatch(fetchUsersThunk({ search, status, limit: 500 }));
 
   useEffect(() => {
     load();
@@ -54,6 +78,7 @@ const UsersPage = () => {
       name: user.name,
       email: user.email,
       mobileNumber: user.mobileNumber,
+      secondaryMobileNumber: user.secondaryMobileNumber || '',
       countryCode: user.countryCode || '+91',
       password: '',
       sendCredentials: false
@@ -63,22 +88,31 @@ const UsersPage = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+
+    if (form.password && form.password.trim().length > 0 && form.password.trim().length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
     setSaving(true);
     try {
       if (editing) {
-        await dispatch(
-          updateUserThunk({
-            userId: editing.id,
-            name: form.name,
-            email: form.email,
-            mobileNumber: form.mobileNumber,
-            countryCode: form.countryCode
-          })
-        ).unwrap();
+        const payload = {
+          userId: editing.id,
+          name: form.name,
+          email: form.email,
+          mobileNumber: form.mobileNumber,
+          secondaryMobileNumber: form.secondaryMobileNumber,
+          countryCode: form.countryCode
+        };
+        if (form.password.trim()) {
+          payload.password = form.password.trim();
+        }
+        await dispatch(updateUserThunk(payload)).unwrap();
         toast.success('User updated');
       } else {
-        const result = await dispatch(createUserThunk(form)).unwrap();
-        toast.success('User created' + (result.data?.temporaryPassword ? ` · Temp password: ${result.data.temporaryPassword}` : ''));
+        await dispatch(createUserThunk(form)).unwrap();
+        toast.success('User created');
       }
       setModalOpen(false);
       load();
@@ -110,28 +144,118 @@ const UsersPage = () => {
     }
   };
 
-  const handleResetPassword = async (user) => {
-    if (!window.confirm(`Reset password for ${user.name}?`)) return;
+  const openImport = () => {
+    setImportStep(1);
+    setPreview(null);
+    setImportResult(null);
+    setMapping({
+      name: '',
+      email: '',
+      mobileNumber: '',
+      secondaryMobileNumber: '',
+      countryCode: '',
+      password: ''
+    });
+    setSendCredentials(false);
+    setImportOpen(true);
+  };
+
+  const autoMapHeaders = (headers = []) => {
+    const next = {
+      name: '',
+      email: '',
+      mobileNumber: '',
+      secondaryMobileNumber: '',
+      countryCode: '',
+      password: ''
+    };
+
+    headers.forEach((header) => {
+      const h = String(header).toLowerCase().trim();
+      if (!next.name && (h.includes('name') || h.includes('full'))) next.name = header;
+      else if (!next.email && h.includes('email')) next.email = header;
+      else if (!next.secondaryMobileNumber && (h.includes('secondary') || h.includes('alt') || h.includes('whatsapp'))) {
+        next.secondaryMobileNumber = header;
+      } else if (!next.mobileNumber && (h.includes('mobile') || h.includes('phone') || h === 'number')) {
+        next.mobileNumber = header;
+      } else if (!next.countryCode && (h.includes('country') || h.includes('code'))) {
+        next.countryCode = header;
+      } else if (!next.password && h.includes('password')) {
+        next.password = header;
+      }
+    });
+
+    return next;
+  };
+
+  const handleExcelUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
     try {
-      const result = await dispatch(resetPasswordThunk({ userId: user.id, sendEmail: true })).unwrap();
-      toast.success(
-        result.data?.temporaryPassword
-          ? `New password: ${result.data.temporaryPassword}`
-          : 'Password reset & emailed'
-      );
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await postRequest('/admin/users/import-preview', fd);
+      setPreview(res.data);
+      setMapping(autoMapHeaders(res.data.headers || []));
+      setImportStep(2);
+      toast.success('Excel loaded. Map columns and import.');
     } catch (err) {
-      toast.error(err);
+      toast.error(err.message || 'Failed to read Excel');
+    } finally {
+      setImporting(false);
+      e.target.value = '';
     }
   };
+
+  const runImport = async () => {
+    if (!mapping.name || !mapping.email || !mapping.mobileNumber) {
+      toast.error('Please map Name, Email and Mobile columns');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const res = await postRequest('/admin/users/import', {
+        storedFile: preview.storedFile,
+        mapping,
+        sendCredentials
+      });
+      setImportResult(res.data);
+      setImportStep(3);
+      toast.success(`Imported ${res.data.createdCount} users`);
+      load();
+    } catch (err) {
+      toast.error(err.message || 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const mappedPreview = useMemo(() => {
+    if (!preview?.sampleRows?.length) return [];
+    return preview.sampleRows.map((row) => ({
+      name: row[mapping.name] || '',
+      email: row[mapping.email] || '',
+      mobileNumber: row[mapping.mobileNumber] || '',
+      secondaryMobileNumber: mapping.secondaryMobileNumber ? row[mapping.secondaryMobileNumber] || '' : ''
+    }));
+  }, [preview, mapping]);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">Users</h2>
-          <p className="text-sm text-slate-500">Create and manage course participants</p>
+          <p className="text-sm text-slate-500">Create, import and manage course participants</p>
         </div>
-        <Button icon={Plus} onClick={openCreate}>Add User</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" icon={FileSpreadsheet} onClick={openImport}>
+            Import Excel
+          </Button>
+          <Button icon={Plus} onClick={openCreate}>Add User</Button>
+        </div>
       </div>
 
       <Card>
@@ -163,11 +287,12 @@ const UsersPage = () => {
           <p className="text-center py-10 text-slate-400">No users found</p>
         ) : (
           <div className="overflow-x-auto -mx-2">
-            <table className="w-full min-w-[640px] text-left">
+            <table className="w-full min-w-[720px] text-left">
               <thead>
                 <tr className="text-xs uppercase tracking-wider text-slate-500 border-b border-slate-100">
                   <th className="py-3 px-2 font-semibold">User</th>
                   <th className="py-3 px-2 font-semibold">Mobile</th>
+                  <th className="py-3 px-2 font-semibold">Secondary</th>
                   <th className="py-3 px-2 font-semibold">Status</th>
                   <th className="py-3 px-2 font-semibold text-right">Actions</th>
                 </tr>
@@ -193,6 +318,9 @@ const UsersPage = () => {
                     <td className="py-3 px-2 text-sm text-slate-600 whitespace-nowrap">
                       {user.countryCode} {user.mobileNumber}
                     </td>
+                    <td className="py-3 px-2 text-sm text-slate-600 whitespace-nowrap">
+                      {user.secondaryMobileNumber || '—'}
+                    </td>
                     <td className="py-3 px-2">
                       <Badge variant={user.isActive ? 'success' : 'danger'}>
                         {user.isActive ? 'Active' : 'Inactive'}
@@ -205,9 +333,6 @@ const UsersPage = () => {
                         </button>
                         <button onClick={() => handleToggle(user)} className="p-2 rounded-lg hover:bg-amber-50 text-slate-500 hover:text-amber-600" title="Toggle status">
                           <Power className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleResetPassword(user)} className="p-2 rounded-lg hover:bg-sky-50 text-slate-500 hover:text-sky-600" title="Reset password">
-                          <KeyRound className="w-4 h-4" />
                         </button>
                         <button onClick={() => handleDelete(user)} className="p-2 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600" title="Delete">
                           <Trash2 className="w-4 h-4" />
@@ -222,7 +347,7 @@ const UsersPage = () => {
         )}
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit User' : 'Create User'} size="md">
+      <Drawer isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit User' : 'Create User'} size="md">
         <form onSubmit={handleSave} className="space-y-4">
           <Input label="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="Email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
@@ -232,32 +357,150 @@ const UsersPage = () => {
               <Input label="Mobile" required value={form.mobileNumber} onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })} />
             </div>
           </div>
+          <Input
+            label="Secondary Mobile"
+            placeholder="Optional"
+            value={form.secondaryMobileNumber}
+            onChange={(e) => setForm({ ...form, secondaryMobileNumber: e.target.value })}
+          />
+          <Input
+            label="Password"
+            type="password"
+            placeholder={editing ? 'Leave blank to keep current password' : 'Optional'}
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
           {!editing && (
-            <>
-              <Input
-                label="Password (optional)"
-                type="password"
-                placeholder="Auto-generated if empty"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={form.sendCredentials}
+                onChange={(e) => setForm({ ...form, sendCredentials: e.target.checked })}
+                className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
               />
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={form.sendCredentials}
-                  onChange={(e) => setForm({ ...form, sendCredentials: e.target.checked })}
-                  className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
-                />
-                Send login credentials via email
-              </label>
-            </>
+              Send login credentials via email
+            </label>
           )}
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-4 sticky bottom-0 bg-white">
             <Button variant="ghost" fullWidth type="button" onClick={() => setModalOpen(false)}>Cancel</Button>
             <Button fullWidth type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
           </div>
         </form>
-      </Modal>
+      </Drawer>
+
+      <Drawer isOpen={importOpen} onClose={() => setImportOpen(false)} title="Import Users from Excel" size="lg">
+        {importStep === 1 && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Upload `.xlsx` / `.xls` / `.csv` file. Next step me columns map karke users create honge.
+            </p>
+            <label className="flex flex-col items-center justify-center gap-2 min-h-[160px] border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 hover:border-brand-300 hover:bg-brand-50/40 cursor-pointer px-4 py-6">
+              <FileSpreadsheet className="w-8 h-8 text-brand-500" />
+              <span className="text-sm font-semibold text-slate-700">
+                {importing ? 'Reading Excel...' : 'Click to upload Excel file'}
+              </span>
+              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} disabled={importing} />
+            </label>
+          </div>
+        )}
+
+        {importStep === 2 && preview && (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-brand-50 border border-brand-100 p-3 text-sm text-slate-700">
+              File: <strong>{preview.fileName}</strong> · Total rows: <strong>{preview.totalRows}</strong>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Column Mapping</p>
+              {FIELD_OPTIONS.map((field) => (
+                <div key={field.key}>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">{field.label}</label>
+                  <select
+                    className="custom-input"
+                    value={mapping[field.key]}
+                    onChange={(e) => setMapping({ ...mapping, [field.key]: e.target.value })}
+                  >
+                    <option value="">— Select Excel column —</option>
+                    {(preview.headers || []).map((header) => (
+                      <option key={header} value={header}>{header}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Preview (first rows)</p>
+              <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-[520px]">
+                  <thead>
+                    <tr className="bg-slate-50 text-xs uppercase text-slate-500">
+                      <th className="px-3 py-2">Name</th>
+                      <th className="px-3 py-2">Email</th>
+                      <th className="px-3 py-2">Mobile</th>
+                      <th className="px-3 py-2">Secondary</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mappedPreview.map((row, idx) => (
+                      <tr key={idx} className="border-t border-slate-100">
+                        <td className="px-3 py-2">{row.name || '—'}</td>
+                        <td className="px-3 py-2">{row.email || '—'}</td>
+                        <td className="px-3 py-2">{row.mobileNumber || '—'}</td>
+                        <td className="px-3 py-2">{row.secondaryMobileNumber || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={sendCredentials}
+                onChange={(e) => setSendCredentials(e.target.checked)}
+                className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
+              />
+              Send login credentials email to imported users
+            </label>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="ghost" fullWidth type="button" onClick={() => setImportStep(1)}>Back</Button>
+              <Button fullWidth onClick={runImport} disabled={importing}>
+                {importing ? 'Importing...' : 'Import Users'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {importStep === 3 && importResult && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="card-aesthetic p-4 text-center">
+                <p className="text-xs uppercase text-slate-500 font-semibold">Created</p>
+                <p className="text-2xl font-extrabold text-emerald-600 mt-1">{importResult.createdCount}</p>
+              </div>
+              <div className="card-aesthetic p-4 text-center">
+                <p className="text-xs uppercase text-slate-500 font-semibold">Skipped</p>
+                <p className="text-2xl font-extrabold text-amber-600 mt-1">{importResult.skippedCount}</p>
+              </div>
+            </div>
+
+            {importResult.skipped?.length > 0 && (
+              <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2">
+                {importResult.skipped.map((item, idx) => (
+                  <p key={idx} className="text-xs text-slate-600">
+                    Row {item.row}: {item.reason} ({item.email})
+                  </p>
+                ))}
+              </div>
+            )}
+
+            <Button fullWidth onClick={() => setImportOpen(false)}>Done</Button>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 };

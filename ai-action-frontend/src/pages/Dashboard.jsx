@@ -1,11 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Video, CalendarCheck, Clapperboard, ExternalLink } from 'lucide-react';
+import { Video, CalendarCheck, Clapperboard, ExternalLink, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { postRequest } from '../services/apiClient';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
+
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const isSameDay = (dateValue) => {
+  if (!dateValue) return false;
+  const d = new Date(dateValue);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+};
 
 const Dashboard = () => {
   const { user } = useSelector((state) => state.auth);
@@ -13,6 +30,18 @@ const Dashboard = () => {
   const [attendance, setAttendance] = useState(null);
   const [recordingsCount, setRecordingsCount] = useState(0);
   const [joining, setJoining] = useState(null);
+  const [todayPopupOpen, setTodayPopupOpen] = useState(false);
+
+  const todaySessions = useMemo(
+    () =>
+      meetings.filter(
+        (m) =>
+          isSameDay(m.meetingDate) &&
+          m.status !== 'cancelled' &&
+          m.status !== 'completed'
+      ),
+    [meetings]
+  );
 
   useEffect(() => {
     (async () => {
@@ -22,14 +51,31 @@ const Dashboard = () => {
           postRequest('/user/attendance/history'),
           postRequest('/user/recordings/list')
         ]);
-        setMeetings(m.data.meetings || []);
+        const list = m.data.meetings || [];
+        setMeetings(list);
         setAttendance(a.data.summary);
         setRecordingsCount((r.data.recordings || []).length);
+
+        const todays = list.filter(
+          (item) =>
+            isSameDay(item.meetingDate) &&
+            item.status !== 'cancelled' &&
+            item.status !== 'completed'
+        );
+        const storageKey = `todaySessionPopup:${todayKey()}`;
+        if (todays.length > 0 && !sessionStorage.getItem(storageKey)) {
+          setTodayPopupOpen(true);
+        }
       } catch (e) {
         console.error(e);
       }
     })();
   }, []);
+
+  const closeTodayPopup = () => {
+    sessionStorage.setItem(`todaySessionPopup:${todayKey()}`, '1');
+    setTodayPopupOpen(false);
+  };
 
   const joinMeeting = async (meetingId) => {
     setJoining(meetingId);
@@ -37,6 +83,7 @@ const Dashboard = () => {
       const res = await postRequest('/user/meetings/join', { meetingId });
       toast.success('Attendance marked — opening Zoom...');
       window.open(res.data.zoomLink, '_blank', 'noopener,noreferrer');
+      closeTodayPopup();
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -95,6 +142,7 @@ const Dashboard = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-bold text-slate-800">{m.title}</p>
                     <Badge variant="info">Day {m.dayNumber}</Badge>
+                    {isSameDay(m.meetingDate) && <Badge variant="warning">Today</Badge>}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
                     {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : ''} · {m.meetingTime}
@@ -113,6 +161,61 @@ const Dashboard = () => {
           </div>
         )}
       </Card>
+
+      <Modal
+        isOpen={todayPopupOpen}
+        onClose={closeTodayPopup}
+        title="Today's Session"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl bg-brand-50 border border-brand-100 p-4 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
+              <div className="text-sm text-slate-700 space-y-2">
+                <p className="font-semibold text-slate-900">Please read carefully</p>
+                <p>
+                  Aaj aapka live session scheduled hai. Agar aap attend nahi karenge to aapki attendance{' '}
+                  <strong className="text-rose-600">Absent</strong> mark hogi.
+                </p>
+                <p>
+                  Recorded videos absentees ko bhi mil sakti hain — jab admin aapko access dega. Present hone se
+                  video access automatic nahi milta.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {todaySessions.map((m) => (
+              <div key={m.id} className="rounded-xl border border-slate-200 p-4 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold text-slate-800">{m.title}</p>
+                  <Badge variant="info">Day {m.dayNumber}</Badge>
+                  <Badge>Session {m.sessionNumber}</Badge>
+                </div>
+                {m.description && <p className="text-sm text-slate-500">{m.description}</p>}
+                <p className="text-xs text-slate-500">
+                  Date: {m.meetingDate ? new Date(m.meetingDate).toLocaleDateString() : '—'} · Time: {m.meetingTime}
+                </p>
+                <Button
+                  size="sm"
+                  icon={ExternalLink}
+                  fullWidth
+                  disabled={joining === m.id}
+                  onClick={() => joinMeeting(m.id)}
+                >
+                  {joining === m.id ? 'Joining...' : 'Join Zoom Now'}
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <Button variant="outline" fullWidth onClick={closeTodayPopup}>
+            OK, Got it
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

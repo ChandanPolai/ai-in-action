@@ -45,14 +45,18 @@ const recordingSchema = new mongoose.Schema(
       ref: 'Meeting',
       default: null
     },
-    // Explicit allow-list — only these users can watch
+    // Global play limit for every allowed user (default 1)
+    maxPlayCount: {
+      type: Number,
+      default: 1,
+      min: 1
+    },
     allowedUsers: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
       }
     ],
-    // Explicit deny-list — overrides allow if both present
     deniedUsers: [
       {
         type: mongoose.Schema.Types.ObjectId,
