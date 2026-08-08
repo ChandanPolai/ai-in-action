@@ -1,218 +1,158 @@
-# AI in Action - MERN Stack Project Requirement Prompt
 
-## Project Overview
+## Website Section Breakdown
 
-Build a complete **AI in Action Learning Management System (LMS)** using the **MERN Stack (MongoDB, Express.js, React.js, Node.js)**.
+**1. Hero Section**
+- Event name + bold hook line (fear/urgency statement)
+- One-line description of what they'll learn
+- Date, Time, Venue, Language (icon + text format)
+- Primary CTA button
+- Discount banner (offer % + deadline)
+
+**2. Agenda/Timeline Section**
+- Time-slot wise breakdown table (Start time – End time – Activity)
+
+**3. Before vs After Section (Transformation)**
+- Left column: Pain points (emoji + short pain statement)
+- Right column: Results after event (emoji + short outcome statement)
+
+**4. Past Event Gallery/Proof Section**
+- Photo grids grouped city-wise (Surat, Ahmedabad, Mumbai, Vadodara venue)
+- Shows credibility/scale of past events
+
+**5. Mentor Credibility/Authority Section**
+- Award/recognition callout (e.g., "Selected by ICAI")
+- Short authority statement
+
+**6. Problem Statement Section**
+- Numbered list (5 business problems)
+- Each with heading + 1-2 line explanation
+
+**7. Curriculum/What You'll Learn Section**
+- List of "Focus Areas" (just titles, numbered 1-8)
+
+**8. Who This Is For Section**
+- 3 audience cards (icon + audience type + one-line benefit)
+
+**9. Mentor Bio Section**
+- Photo + Name + Title
+- 3-4 bullet credibility points (years experience, businesses consulted, results driven)
+- Mission statement paragraph
+
+**10. About Company Section**
+- Short company description
+- Industries served (icon grid: BFSI, Education, Infra, Manufacturing)
+
+**11. Value/ROI Section**
+- Cost-saving pitch (before/after cost comparison)
+- Bullet list of benefits
 
-The project structure, coding standards, folder organization, architecture, naming conventions, and best practices **must follow the existing "Coming Soon" project's backend and frontend structure**. Reuse the same architecture wherever applicable to maintain consistency across both projects.
+**12. Pricing/Tickets Section**
+- 3-tier pricing cards (Early Bird / VIP / Elite)
+- Each with: strike-through price, discounted price, feature checklist, CTA button, "limited seats" tag
 
-The application should include two main panels:
+**13. Testimonials Section**
+- Client review images/quotes
 
-* **Admin Panel**
-* **User Panel**
+**14. Brand Logos Section**
+- "Top brands trust AI" — logo strip (social proof)
+
+**15. Benefits/10X Section**
+- 6 numbered benefit blocks, each with heading + short bullet list
 
-The UI should be modern, responsive, clean, and easy to use.
+**16. Bonuses Section**
+- Bonus items numbered (1,2,3,4...)
+- Each with: Title + description + ₹ value + total bonus value at the end
 
----
+**17. FAQ Section**
+- Simple Q&A accordion list
 
-# Authentication
+**18. Urgency/Countdown Section**
+- Countdown timer (days/hrs/min/sec) + final CTA
 
-## Admin Authentication
 
-There will be a single Admin.
+************************************************************************************************************
+************************************************************************************************************
 
-Admin should have the following fields:
+## AI In Action — Homepage Content (Premium Version)
 
-* Name
-* Email
-* Password
-* Profile Photo
+**1. Hero Section**
+- Headline: **AI In Action**
+- Sub-headline: *"14 Years of Building Real Businesses. Now We Turn That Experience Into Your AI Advantage."*
+- Punch line: *"What Are You Waiting For? Scroll Down. Automate Your Business. Move Fast."*
+- Details bar: 14-Day Workshop | Date | Time | Venue | Language
+- CTA: **"Yes, I Want to Scale My Business With AI"**
+- Discount/urgency banner strip
 
-Admin should be able to securely login and logout.
+**2. Our Journey Section (Your Unique Edge)**
+- Heading: **"We've Seen 0 to 100 — Not Just Studied It"**
+- Body: *"14 years running a real business. We've watched the world shift — manual to digital, digital to AI. We didn't just read about it, we lived it, adapted, and rebuilt our own business around AI. Now we're handing you that same playbook."*
+- Trust line: *"This isn't theory. This is battle-tested experience."*
 
-Passwords must be encrypted using industry best practices.
+**3. Agenda / Journey Timeline (14 Days)**
+- Day-wise breakdown — short title + 1-line outcome per day
+  - Day 1: AI Foundations — Understand the Shift
+  - Day 2: Prompting Mastery
+  - Day 3-4: Vibe Coding Basics
+  - Day 5-7: Build Your First AI Agent
+  - Day 8-10: Advanced Agents — Sales, Support, Ops
+  - Day 11-12: AI Marketing & Content Engine
+  - Day 13: Monetize AI — Build Sellable Solutions
+  - Day 14: Your 90-Day AI Execution Blueprint + Closing
+  *(Ye sample hai — apne actual 14-day structure ke hisaab se adjust karna)*
 
----
+**4. Before vs After (Transformation Section)**
+- Before: Overworked, stuck revenue, losing to AI-powered competitors, tool overwhelm
+- After: AI employees running 24/7, 20+ hours/week saved, time freedom, business runs without you
 
-# User Management
+**5. What You'll Learn (Curriculum Highlights)**
+- AI Foundations for Business Growth
+- Build Your First AI Employee (No Code)
+- AI Marketing & Sales Engine
+- Monetize AI With Sellable Solutions
+- No-Code Websites & Apps
+- Vibe Coding — The New Business Language
+- Fully Functional AI Agents
+- Your 90-Day AI Growth Blueprint
 
-The Admin should have complete control over users.
+**6. Who This Is For**
+- D2C, E-commerce & Local Business Owners
 
-Each User will have:
+**Positioning line for developer/designer brief:**
+*"Ye site ek real business owner ki journey pe based hai — 14 years ka trust + AI ka future. Design premium, clean, aur credibility-focused hona chahiye — flashy nahi, solid lagna chahiye."*
 
-* Name
-* Email
-* Mobile Number
-* Country Code
-* Password
-* Profile Photo
+Chahen to main isko ek proper Word doc ya PDF bana ke de sakta hoon jo directly developer ko forward kar sako — batao?
+- Service Providers & Freelancers
+- Corporate Leaders & Managers
 
-Admin should be able to:
+**7. Meet Your Mentor**
+- Photo + Name + Title (e.g. "The Business Owner's AI Architect")
+- Bullets: 14+ years running a real business | Direct hands-on experience scaling with AI | Practical, no-fluff teaching style
+- Mission statement: *"Our mission — help Indian business owners adopt AI the right way, from people who've actually built a business, not just talked about one."*
 
-* Create User
-* Edit User
-* Delete User
-* View User Details
-* Reset/Change User Password
-* Activate/Deactivate User
-* Send Login Credentials to the user's email after account creation
+**8. The 5 Problems We Solve**
+- Numbered list, business-owner pain points → each with a short explanation
 
----
+**9. Why Learn From Us (Differentiator Section — Optional but Powerful)**
+- *"Most trainers teach AI. We've run a business for 14 years and rebuilt it with AI ourselves."*
+- This section can carry logos/proof of your own company's journey
 
-# Dashboard
+**10. Pricing / Tickets**
+- 3-tier cards: Early Bird / VIP / Elite — pricing, feature checklist, "limited seats," CTA button on each
 
-The Admin Dashboard should display:
+**11. Testimonials**
+- Client/attendee reviews with photos
 
-* Total Users
-* Active Users
-* Inactive Users
-* Total Meetings
-* Upcoming Meetings
-* Completed Meetings
-* User Attendance Summary
+**12. Trusted By / Brand Logos** *(if applicable)*
+- Companies/clients associated with your 14-year business journey
 
----
+**13. Bonuses Section**
+- Numbered bonuses with ₹ value + total bonus value stacked at bottom
 
-# Meeting Management
+**14. FAQ Section**
+- When, Where, What to bring, Is it for non-technical owners, etc.
 
-The main purpose of this application is to manage our **AI in Action Course**, where users attend live Zoom sessions.
+**15. Final Urgency / Countdown Section**
+- Countdown timer + final strong CTA
+***********************************************************************************************************************************
+***********************************************************************************************************************************
 
-Admin should be able to:
-
-* Create Meeting
-* Edit Meeting
-* Delete Meeting
-* Schedule meetings by Date
-* Schedule meetings by Time
-* Add Meeting Title
-* Add Meeting Description
-* Add Zoom Meeting Link
-* Organize meetings Day-wise or Session-wise
-
-Users should see only the meetings assigned to them.
-
----
-
-# Attendance Management
-
-Attendance is one of the most important modules.
-
-When a user clicks the Zoom meeting link and attends the session, the system should record the attendance.
-
-Attendance status should include:
-
-* Present
-* Absent
-
-Admin should be able to:
-
-* View attendance for every meeting
-* Filter attendance by Date
-* Filter attendance by User
-* View attendance history
-* Export attendance if required in the future
-
----
-
-# Session Recording Management
-
-After every live session, the Admin uploads the recorded video.
-
-For each recording, Admin should provide:
-
-* Session Title
-* Description
-* Day Number
-* Session Number
-* Video File or Video URL
-* Upload Date
-
----
-
-# Video Access Rules
-
-This module is extremely important.
-
-Admin should have complete control over who can watch each session recording.
-
-Requirements:
-
-* Present users should not automatically get access to recordings.
-* Absent users can be allowed to watch recordings.
-* Admin should have a setting for every session to decide:
-
-  * Which users can watch the recording.
-  * Which users cannot watch the recording.
-* Video access should be completely controlled from the Admin Panel.
-
-This permission should be flexible and configurable.
-
----
-
-# User Panel
-
-Users should be able to:
-
-* Login
-* View their profile
-* Update basic profile information (if allowed)
-* View upcoming meetings
-* Join Zoom meetings with a single click
-* View attendance history
-* Watch only the recordings that the Admin has permitted
-* See session details day-wise
-
-Users should not have access to any administrative functionality.
-
----
-
-# Notifications (Future Ready)
-
-Design the architecture in a way that future modules can be easily added, such as:
-
-* Email Notifications
-* WhatsApp Notifications
-
-
----
-
-# Technical Requirements
-
-* MERN Stack (MongoDB, Express.js, React.js, Node.js)
-* Follow the same backend and frontend architecture as the existing "Coming Soon" project.
-* Use a clean, modular, and scalable folder structure.
-* Follow REST API best practices.
-* Use JWT Authentication.
-* Use Role-Based Access Control (Admin & User).
-* Use reusable components and services.
-* Write production-ready, maintainable, and scalable code.
-* Keep the project future-proof so additional features can be added without major refactoring.
-
----
-
-# Goal
-
-The objective is to build a professional Admin and User Management System for the **AI in Action Course**, allowing the Admin to manage users, schedule Zoom sessions, track attendance, upload session recordings, and control video access permissions, while users can easily join meetings and access only the content they are authorized to view.
-
-
-
-imp ::
-
-white and blue theme i want use tailkwind css full mobile frilendy acces i want ok .....
-
-
--------------------------------
-ok great abhi he naa 
-
-----------------------------
-
-admin side
-----------
-users section me 1 btn dedo jis per clikakrke sabkocrainls unka bhej paye ok please au jais ehkisisuser ka account create ho to 
-tabhiusk passmailchallajaye ok ...
-
-meetng me sirf time likha he aap h naa start toime end time rakhdo jais ehitimgkatatm houtoitc meetingcompletet kardena ok simple.
-
-users ko mymeeting me hi reviw ka 1 butuon dedo jisper clikkarne se ek page khulegaajaj pr wo har meemting wise reviw de paye ahme har meetingwis ereviw lena he smsmajagyenaa 
-
-aur jais ehimeetingkahatm hoga naa automic sabho komilchlalajanchiye reviw dedo is meetigka smsmajagyenaa jojoattemd hua hogha ok 
