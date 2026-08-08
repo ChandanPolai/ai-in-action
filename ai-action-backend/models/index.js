@@ -10,6 +10,11 @@ import AppSettings from './AppSettings.js';
 import Course from './Course.js';
 import Complaint from './Complaint.js';
 import MeetingReview from './MeetingReview.js';
+import WebsiteWorkshop from './WebsiteWorkshop.js';
+import WebsiteSession from './WebsiteSession.js';
+import WebsiteTestimonial from './WebsiteTestimonial.js';
+import WebsiteGallery from './WebsiteGallery.js';
+import WebsiteHero from './WebsiteHero.js';
 
 export {
   Admin,
@@ -23,7 +28,12 @@ export {
   AppSettings,
   Course,
   Complaint,
-  MeetingReview
+  MeetingReview,
+  WebsiteWorkshop,
+  WebsiteSession,
+  WebsiteTestimonial,
+  WebsiteGallery,
+  WebsiteHero
 };
 
 export default {
@@ -38,5 +48,10 @@ export default {
   AppSettings,
   Course,
   Complaint,
-  MeetingReview
+  MeetingReview,
+  WebsiteWorkshop,
+  WebsiteSession,
+  WebsiteTestimonial,
+  WebsiteGallery,
+  WebsiteHero
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Sidebar, { adminNavItems } from './Sidebar';
+import Sidebar, { findNavLabel } from './Sidebar';
 import Header from './Header';
 import LogoutConfirmModal from '../modals/LogoutConfirmModal';
 
@@ -8,8 +8,7 @@ export const Layout = ({ children, activeTab, setActiveTab, onLogout, onOpenSett
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const currentItem = adminNavItems.find((item) => item.id === activeTab);
-  const activeTitle = currentItem ? currentItem.label : 'Settings';
+  const activeTitle = findNavLabel(activeTab);
 
   return (
     <div className="min-h-screen bg-slate-50 flex">

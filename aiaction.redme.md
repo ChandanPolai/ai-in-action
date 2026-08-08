@@ -156,3 +156,23 @@ Chahen to main isko ek proper Word doc ya PDF bana ke de sakta hoon jo directly 
 ***********************************************************************************************************************************
 ***********************************************************************************************************************************
 
+dekho mughe he naa ai in action ka website bnan he lekin dynamic
+to me apko bata deta hu ki kyaky mdoels banage  jo ki data 
+public hoga ok webiste me hame usekarna he dmin pnel per website karek ek drodpown sidebar me dena he olk.
+
+
+1. workshop thatmean courses like tile dtion acuctal price 
+gst and base price esakuch ek jada oric ehoaguskocut krke ahchpriceshowkarnege esasmamjayenaa ...
+rich text box editor rkhnahe mdin aonelper ok ..
+
+2. anne bale session ka anme desctio iamge session me kons  edin konsa session hoagdate and time smsmajagyena sessionttle destion timing ok start time edntime also in ...
+
+3. testimonls name desction image postion of prson that optional ok .
+
+4. galelrysection vidos tab wise and images tab wise ok .
+
+5. hero section 
+titile descion image just 3 things ok 
+heros ction videos and images section optialn ok 
+
+create thins things please model cotrole and routes imopend in amdin sid eok 

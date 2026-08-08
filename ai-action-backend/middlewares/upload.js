@@ -12,8 +12,17 @@ const uploadRecordingDir = path.join(__dirname, '../uploads/recordings');
 const uploadExcelDir = path.join(__dirname, '../uploads/excel');
 const uploadCourseDir = path.join(__dirname, '../uploads/courses');
 const uploadComplaintDir = path.join(__dirname, '../uploads/complaints');
+const uploadWebsiteDir = path.join(__dirname, '../uploads/website');
 
-[uploadAdminDir, uploadUserDir, uploadRecordingDir, uploadExcelDir, uploadCourseDir, uploadComplaintDir].forEach((dir) => {
+[
+  uploadAdminDir,
+  uploadUserDir,
+  uploadRecordingDir,
+  uploadExcelDir,
+  uploadCourseDir,
+  uploadComplaintDir,
+  uploadWebsiteDir
+].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -99,11 +108,31 @@ export const uploadComplaintImage = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
+export const uploadWebsiteImage = multer({
+  storage: makeStorage(uploadWebsiteDir, 'website'),
+  fileFilter: imageFilter,
+  limits: { fileSize: 8 * 1024 * 1024 }
+});
+
+export const uploadWebsiteMedia = multer({
+  storage: makeStorage(uploadWebsiteDir, 'website-media'),
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image or video files are allowed!'), false);
+    }
+  },
+  limits: { fileSize: 100 * 1024 * 1024 }
+});
+
 export default {
   uploadAdminAvatar,
   uploadUserAvatar,
   uploadRecordingVideo,
   uploadExcelFile,
   uploadCourseImage,
-  uploadComplaintImage
+  uploadComplaintImage,
+  uploadWebsiteImage,
+  uploadWebsiteMedia
 };

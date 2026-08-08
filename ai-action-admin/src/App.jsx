@@ -13,6 +13,11 @@ import CoursesPage from './pages/Courses';
 import ComplaintsPage from './pages/Complaints';
 import ReviewsPage from './pages/Reviews';
 import SettingsPage from './pages/Settings';
+import WebsiteHeroPage from './pages/website/WebsiteHero';
+import WebsiteWorkshopsPage from './pages/website/WebsiteWorkshops';
+import WebsiteSessionsPage from './pages/website/WebsiteSessions';
+import WebsiteTestimonialsPage from './pages/website/WebsiteTestimonials';
+import WebsiteGalleryPage from './pages/website/WebsiteGallery';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { logout, fetchAdminProfileThunk } from './store/slices/authSlice';
@@ -56,6 +61,16 @@ const DashboardWrapper = () => {
         return <PlayRequestsPage />;
       case 'courses':
         return <CoursesPage />;
+      case 'website-hero':
+        return <WebsiteHeroPage />;
+      case 'website-workshops':
+        return <WebsiteWorkshopsPage />;
+      case 'website-sessions':
+        return <WebsiteSessionsPage />;
+      case 'website-testimonials':
+        return <WebsiteTestimonialsPage />;
+      case 'website-gallery':
+        return <WebsiteGalleryPage />;
       case 'feedback':
         return <ComplaintsPage />;
       case 'settings':
