@@ -1,6 +1,15 @@
-import { getUserToken } from '../utils/storage';
+import { getUserToken, clearUserSession } from '../utils/storage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+const forceLogoutToLogin = () => {
+  clearUserSession();
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  const loginPath = `${base}/login`;
+  if (!window.location.pathname.endsWith('/login')) {
+    window.location.assign(loginPath);
+  }
+};
 
 export const postRequest = async (endpoint, data = {}, customHeaders = {}) => {
   try {
@@ -22,9 +31,20 @@ export const postRequest = async (endpoint, data = {}, customHeaders = {}) => {
     const result = await response.json();
 
     if (!response.ok || !result.status) {
-      const err = new Error(result.message || 'API Request Failed');
+      const message = result.message || 'API Request Failed';
+      const deactivated =
+        response.status === 401 &&
+        userToken &&
+        /deactivated|not found/i.test(message);
+
+      if (deactivated) {
+        forceLogoutToLogin();
+      }
+
+      const err = new Error(message);
       err.data = result.data || null;
       err.code = result.data?.code || null;
+      err.status = response.status;
       throw err;
     }
 

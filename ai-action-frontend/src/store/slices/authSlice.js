@@ -80,6 +80,11 @@ const authSlice = createSlice({
       .addCase(fetchProfileThunk.fulfilled, (state, action) => {
         state.user = action.payload.data.user;
         setUserData(action.payload.data.user);
+      })
+      .addCase(fetchProfileThunk.rejected, (state) => {
+        clearUserSession();
+        state.userToken = null;
+        state.user = null;
       });
   }
 });

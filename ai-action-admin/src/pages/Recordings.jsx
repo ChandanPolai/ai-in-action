@@ -163,6 +163,24 @@ const RecordingsPage = () => {
     }
   };
 
+  const handleToggleActive = async (r, makeActive) => {
+    if ((r.isActive !== false) === makeActive) return;
+    try {
+      await postRequest('/admin/recordings/toggle-status', {
+        recordingId: r.id,
+        isActive: makeActive
+      });
+      toast.success(
+        makeActive
+          ? 'Recording activated — users can see it'
+          : 'Recording deactivated — hidden from users'
+      );
+      dispatch(fetchRecordingsThunk({}));
+    } catch (err) {
+      toast.error(err.message || err);
+    }
+  };
+
   const toggleAccessUser = (userId) => {
     setSelectedUsers((prev) => {
       const id = String(userId);
@@ -197,7 +215,7 @@ const RecordingsPage = () => {
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">Session Recordings</h2>
           <p className="text-sm text-slate-500">
-            Upload, set play limit per user, control access, and view watch analytics
+            Upload, set play limit, control access. Use Active/Inactive to show or hide a recording from users.
           </p>
         </div>
         <Button icon={Plus} onClick={openCreate}>Add Recording</Button>
@@ -209,7 +227,7 @@ const RecordingsPage = () => {
           <p className="col-span-full text-center py-10 text-slate-400">No recordings yet</p>
         )}
         {list.map((r) => (
-          <Card key={r.id} className="!p-5">
+          <Card key={r.id} className={`!p-5 ${r.isActive === false ? 'opacity-75' : ''}`}>
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0">
                 <p className="font-bold text-slate-800">{r.sessionTitle}</p>
@@ -217,7 +235,33 @@ const RecordingsPage = () => {
                   Day {r.dayNumber} · Session {r.sessionNumber}
                 </p>
               </div>
-              <Badge variant="info">{(r.allowedUsers || []).length} allowed</Badge>
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                <Badge variant="info">{(r.allowedUsers || []).length} allowed</Badge>
+                <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(r, true)}
+                    className={`px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                      r.isActive !== false
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-white text-slate-500 hover:bg-emerald-50 hover:text-emerald-700'
+                    }`}
+                  >
+                    Active
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(r, false)}
+                    className={`px-2.5 py-1 text-[11px] font-semibold transition-colors border-l border-slate-200 ${
+                      r.isActive === false
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-white text-slate-500 hover:bg-rose-50 hover:text-rose-700'
+                    }`}
+                  >
+                    Inactive
+                  </button>
+                </div>
+              </div>
             </div>
             <p className="text-sm text-slate-500 line-clamp-2 mb-3">{r.description || 'No description'}</p>
             <div className="flex flex-wrap gap-2 mb-3 text-xs text-slate-500">

@@ -15,6 +15,7 @@ const formatRecording = (r, stats = null) => ({
   maxPlayCount: r.maxPlayCount ?? 1,
   allowedUsers: r.allowedUsers,
   deniedUsers: r.deniedUsers,
+  isActive: r.isActive !== false,
   createdAt: r.createdAt,
   updatedAt: r.updatedAt,
   ...(stats
@@ -58,7 +59,8 @@ export const createRecording = async (req, res) => {
       meetingId = null,
       maxPlayCount,
       allowedUsers = [],
-      deniedUsers = []
+      deniedUsers = [],
+      isActive = true
     } = req.body;
 
     if (!sessionTitle) {
@@ -94,6 +96,7 @@ export const createRecording = async (req, res) => {
       maxPlayCount: playLimit,
       allowedUsers: Array.isArray(allowed) ? allowed : [],
       deniedUsers: Array.isArray(denied) ? denied : [],
+      isActive: String(isActive) !== 'false' && isActive !== false,
       uploadDate: new Date(),
       createdBy: req.admin._id
     });
@@ -113,10 +116,12 @@ export const createRecording = async (req, res) => {
 // @route   POST /api/admin/recordings/list
 export const listRecordings = async (req, res) => {
   try {
-    const { search = '', dayNumber, page = 1, limit = 50 } = req.body;
+    const { search = '', dayNumber, isActive = 'all', page = 1, limit = 50 } = req.body;
     const query = { isDeleted: false };
 
     if (dayNumber) query.dayNumber = Number(dayNumber);
+    if (isActive === 'active') query.isActive = { $ne: false };
+    if (isActive === 'inactive') query.isActive = false;
     if (search) {
       const regex = new RegExp(search.trim(), 'i');
       query.$or = [{ sessionTitle: regex }, { description: regex }];
@@ -189,7 +194,8 @@ export const updateRecording = async (req, res) => {
       sessionNumber,
       videoUrl,
       meetingId,
-      maxPlayCount
+      maxPlayCount,
+      isActive
     } = req.body;
 
     if (!recordingId) return sendError(res, 'recordingId is required', null, 400);
@@ -204,6 +210,9 @@ export const updateRecording = async (req, res) => {
     if (videoUrl !== undefined) recording.videoUrl = videoUrl;
     if (meetingId !== undefined) recording.meetingId = meetingId || null;
     if (maxPlayCount !== undefined) recording.maxPlayCount = Math.max(1, Number(maxPlayCount) || 1);
+    if (isActive !== undefined) {
+      recording.isActive = String(isActive) !== 'false' && isActive !== false;
+    }
     if (req.file) recording.videoFile = `/uploads/recordings/${req.file.filename}`;
     await recording.save();
 
@@ -233,6 +242,33 @@ export const deleteRecording = async (req, res) => {
     await recording.save();
 
     return sendSuccess(res, 'Recording deleted successfully');
+  } catch (error) {
+    return sendError(res, error.message, null, 500);
+  }
+};
+
+export const toggleRecordingStatus = async (req, res) => {
+  try {
+    const { recordingId, isActive } = req.body;
+    if (!recordingId) return sendError(res, 'recordingId is required', null, 400);
+
+    const recording = await Recording.findOne({ _id: recordingId, isDeleted: false });
+    if (!recording) return sendError(res, 'Recording not found', null, 404);
+
+    if (isActive !== undefined) {
+      recording.isActive = String(isActive) !== 'false' && isActive !== false;
+    } else {
+      recording.isActive = recording.isActive === false;
+    }
+    await recording.save();
+    await recording.populate('allowedUsers', 'name email');
+    await recording.populate('deniedUsers', 'name email');
+
+    return sendSuccess(
+      res,
+      `Recording ${recording.isActive !== false ? 'activated' : 'deactivated'} successfully`,
+      { recording: formatRecording(recording) }
+    );
   } catch (error) {
     return sendError(res, error.message, null, 500);
   }
@@ -559,6 +595,7 @@ export default {
   getRecording,
   updateRecording,
   deleteRecording,
+  toggleRecordingStatus,
   setRecordingAccess,
   getAccessMatrix,
   getRecordingAnalytics,

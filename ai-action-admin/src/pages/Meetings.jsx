@@ -202,6 +202,24 @@ const MeetingsPage = () => {
     }
   };
 
+  const handleToggleActive = async (m, makeActive) => {
+    if ((m.isActive !== false) === makeActive) return;
+    try {
+      await postRequest('/admin/meetings/toggle-status', {
+        meetingId: m.id,
+        isActive: makeActive
+      });
+      toast.success(
+        makeActive
+          ? 'Meeting activated — users can see it'
+          : 'Meeting deactivated — hidden from users'
+      );
+      loadMeetings();
+    } catch (err) {
+      toast.error(err.message || err);
+    }
+  };
+
   const clearFilters = () => {
     const reset = {
       search: '',
@@ -226,7 +244,7 @@ const MeetingsPage = () => {
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">Meetings</h2>
           <p className="text-sm text-slate-500">
-            Set status to <strong>Live</strong> when session starts — only then users can mark attendance
+            Set status to <strong>Live</strong> when session starts. Use Active/Inactive to show or hide a meeting from users.
           </p>
         </div>
         <Button icon={Plus} onClick={openCreate}>Create Meeting</Button>
@@ -300,7 +318,7 @@ const MeetingsPage = () => {
           <p className="text-slate-400 col-span-full text-center py-10">No meetings found</p>
         )}
         {list.map((m) => (
-          <Card key={m.id} className={`!p-5 ${m.status === 'live' ? '!border-rose-200 !bg-rose-50/30' : ''}`}>
+          <Card key={m.id} className={`!p-5 ${m.status === 'live' ? '!border-rose-200 !bg-rose-50/30' : ''} ${m.isActive === false ? 'opacity-75' : ''}`}>
             <div className="flex items-start justify-between gap-2 mb-3">
               <div className="min-w-0">
                 <p className="font-bold text-slate-800 truncate">{m.title}</p>
@@ -308,7 +326,33 @@ const MeetingsPage = () => {
                   Day {m.dayNumber} · Session {m.sessionNumber}
                 </p>
               </div>
-              <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
+                <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(m, true)}
+                    className={`px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                      m.isActive !== false
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-white text-slate-500 hover:bg-emerald-50 hover:text-emerald-700'
+                    }`}
+                  >
+                    Active
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(m, false)}
+                    className={`px-2.5 py-1 text-[11px] font-semibold transition-colors border-l border-slate-200 ${
+                      m.isActive === false
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-white text-slate-500 hover:bg-rose-50 hover:text-rose-700'
+                    }`}
+                  >
+                    Inactive
+                  </button>
+                </div>
+              </div>
             </div>
             <p className="text-sm text-slate-500 line-clamp-2 mb-3">{m.description || 'No description'}</p>
             <div className="text-xs text-slate-600 space-y-1 mb-4">

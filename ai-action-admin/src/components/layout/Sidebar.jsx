@@ -40,12 +40,12 @@ export const adminNavItems = [
   { id: 'recordings', label: 'Recordings', icon: Clapperboard },
   { id: 'play-requests', label: 'Play Requests', icon: Inbox },
   { id: 'courses', label: 'Courses', icon: BookOpen },
-  {
-    id: 'website',
-    label: 'Website',
-    icon: Globe,
-    children: websiteNavChildren
-  },
+  // {
+  //   id: 'website',
+  //   label: 'Website',
+  //   icon: Globe,
+  //   children: websiteNavChildren
+  // },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareWarning },
   { id: 'settings', label: 'Settings', icon: Settings }
 ];

@@ -5,6 +5,7 @@ import {
   getRecording,
   updateRecording,
   deleteRecording,
+  toggleRecordingStatus,
   setRecordingAccess,
   getAccessMatrix,
   getRecordingAnalytics,
@@ -25,6 +26,7 @@ router.post('/list', listRecordings);
 router.post('/get', getRecording);
 router.post('/update', uploadRecordingVideo.single('videoFile'), updateRecording);
 router.post('/delete', deleteRecording);
+router.post('/toggle-status', toggleRecordingStatus);
 router.post('/set-access', setRecordingAccess);
 router.post('/access-matrix', getAccessMatrix);
 router.post('/analytics', getRecordingAnalytics);

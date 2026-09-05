@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Search, Pencil, Trash2, Power, FileSpreadsheet, Mail } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, FileSpreadsheet, Mail } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   fetchUsersThunk,
@@ -12,7 +12,6 @@ import {
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import Badge from '../components/ui/Badge';
 import Drawer from '../components/ui/Drawer';
 import { imageUrl, postRequest } from '../services/apiClient';
 
@@ -135,10 +134,11 @@ const UsersPage = () => {
     }
   };
 
-  const handleToggle = async (user) => {
+  const handleToggle = async (user, makeActive) => {
+    if (user.isActive === makeActive) return;
     try {
       await dispatch(toggleUserStatusThunk(user.id)).unwrap();
-      toast.success('Status updated');
+      toast.success(makeActive ? 'User activated' : 'User deactivated — they can no longer access the app');
       load();
     } catch (err) {
       toast.error(err);
@@ -268,7 +268,12 @@ const UsersPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">Users</h2>
-          <p className="text-sm text-slate-500">Create, import and manage course participants</p>
+          <p className="text-sm text-slate-500">
+            Create, import and manage course participants
+            {!loading && (
+              <span className="ml-1 font-semibold text-slate-700">· {list.length} user{list.length === 1 ? '' : 's'}</span>
+            )}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -318,6 +323,7 @@ const UsersPage = () => {
             <table className="w-full min-w-[720px] text-left">
               <thead>
                 <tr className="text-xs uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                  <th className="py-3 px-2 font-semibold w-12">#</th>
                   <th className="py-3 px-2 font-semibold">User</th>
                   <th className="py-3 px-2 font-semibold">Mobile</th>
                   <th className="py-3 px-2 font-semibold">Secondary</th>
@@ -326,8 +332,11 @@ const UsersPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {list.map((user) => (
+                {list.map((user, index) => (
                   <tr key={user.id} className="border-b border-slate-50 hover:bg-slate-50/60">
+                    <td className="py-3 px-2 text-sm font-semibold text-slate-500 tabular-nums">
+                      {index + 1}
+                    </td>
                     <td className="py-3 px-2">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 font-bold flex items-center justify-center overflow-hidden shrink-0">
@@ -350,17 +359,35 @@ const UsersPage = () => {
                       {user.secondaryMobileNumber || '—'}
                     </td>
                     <td className="py-3 px-2">
-                      <Badge variant={user.isActive ? 'success' : 'danger'}>
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
+                      <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => handleToggle(user, true)}
+                          className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                            user.isActive
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-white text-slate-500 hover:bg-emerald-50 hover:text-emerald-700'
+                          }`}
+                        >
+                          Active
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggle(user, false)}
+                          className={`px-3 py-1.5 text-xs font-semibold transition-colors border-l border-slate-200 ${
+                            !user.isActive
+                              ? 'bg-rose-500 text-white'
+                              : 'bg-white text-slate-500 hover:bg-rose-50 hover:text-rose-700'
+                          }`}
+                        >
+                          Inactive
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => openEdit(user)} className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600" title="Edit">
                           <Pencil className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleToggle(user)} className="p-2 rounded-lg hover:bg-amber-50 text-slate-500 hover:text-amber-600" title="Toggle status">
-                          <Power className="w-4 h-4" />
                         </button>
                         <button onClick={() => handleDelete(user)} className="p-2 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600" title="Delete">
                           <Trash2 className="w-4 h-4" />

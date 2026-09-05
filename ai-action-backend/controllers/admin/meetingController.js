@@ -21,6 +21,7 @@ const formatMeeting = (m) => {
     organizationType: m.organizationType,
     assignedUsers: m.assignedUsers,
     status: m.status,
+    isActive: m.isActive !== false,
     reviewEmailSent: m.reviewEmailSent || false,
     createdAt: m.createdAt,
     updatedAt: m.updatedAt
@@ -69,7 +70,8 @@ export const createMeeting = async (req, res) => {
       sessionNumber = 1,
       organizationType = 'day-wise',
       assignedUsers = [],
-      status = 'upcoming'
+      status = 'upcoming',
+      isActive = true
     } = req.body;
 
     const times = resolveTimes({ meetingTime, startTime, endTime });
@@ -91,6 +93,7 @@ export const createMeeting = async (req, res) => {
       organizationType,
       assignedUsers,
       status,
+      isActive: String(isActive) !== 'false' && isActive !== false,
       createdBy: req.admin._id
     });
 
@@ -113,12 +116,15 @@ export const listMeetings = async (req, res) => {
       sessionNumber,
       dateFrom,
       dateTo,
+      isActive = 'all',
       page = 1,
       limit = 50
     } = req.body;
     const query = { isDeleted: false };
 
     if (status && status !== 'all') query.status = status;
+    if (isActive === 'active') query.isActive = { $ne: false };
+    if (isActive === 'inactive') query.isActive = false;
     if (dayNumber) query.dayNumber = Number(dayNumber);
     if (sessionNumber) query.sessionNumber = Number(sessionNumber);
 
@@ -186,7 +192,8 @@ export const updateMeeting = async (req, res) => {
       sessionNumber,
       organizationType,
       assignedUsers,
-      status
+      status,
+      isActive
     } = req.body;
 
     if (!meetingId) return sendError(res, 'meetingId is required', null, 400);
@@ -202,6 +209,9 @@ export const updateMeeting = async (req, res) => {
     if (sessionNumber !== undefined) meeting.sessionNumber = Number(sessionNumber);
     if (organizationType) meeting.organizationType = organizationType;
     if (status) meeting.status = status;
+    if (isActive !== undefined) {
+      meeting.isActive = String(isActive) !== 'false' && isActive !== false;
+    }
     if (Array.isArray(assignedUsers)) meeting.assignedUsers = assignedUsers;
 
     if (startTime !== undefined || meetingTime !== undefined || endTime !== undefined) {
@@ -239,6 +249,32 @@ export const deleteMeeting = async (req, res) => {
     await meeting.save();
 
     return sendSuccess(res, 'Meeting deleted successfully');
+  } catch (error) {
+    return sendError(res, error.message, null, 500);
+  }
+};
+
+export const toggleMeetingStatus = async (req, res) => {
+  try {
+    const { meetingId, isActive } = req.body;
+    if (!meetingId) return sendError(res, 'meetingId is required', null, 400);
+
+    const meeting = await Meeting.findOne({ _id: meetingId, isDeleted: false });
+    if (!meeting) return sendError(res, 'Meeting not found', null, 404);
+
+    if (isActive !== undefined) {
+      meeting.isActive = String(isActive) !== 'false' && isActive !== false;
+    } else {
+      meeting.isActive = meeting.isActive === false;
+    }
+    await meeting.save();
+    await meeting.populate('assignedUsers', 'name email profilePhoto');
+
+    return sendSuccess(
+      res,
+      `Meeting ${meeting.isActive !== false ? 'activated' : 'deactivated'} successfully`,
+      { meeting: formatMeeting(meeting) }
+    );
   } catch (error) {
     return sendError(res, error.message, null, 500);
   }
@@ -394,6 +430,7 @@ export default {
   getMeeting,
   updateMeeting,
   deleteMeeting,
+  toggleMeetingStatus,
   markMeetingCompleted,
   listMeetingReviews
 };

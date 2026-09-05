@@ -39,6 +39,7 @@ export const listMyRecordings = async (req, res) => {
 
     const recordings = await Recording.find({
       isDeleted: false,
+      isActive: { $ne: false },
       allowedUsers: userId,
       deniedUsers: { $ne: userId }
     }).sort({ dayNumber: 1, sessionNumber: 1 });
@@ -98,7 +99,11 @@ export const watchRecording = async (req, res) => {
     const { recordingId } = req.body;
     if (!recordingId) return sendError(res, 'recordingId is required', null, 400);
 
-    const recording = await Recording.findOne({ _id: recordingId, isDeleted: false });
+    const recording = await Recording.findOne({
+      _id: recordingId,
+      isDeleted: false,
+      isActive: { $ne: false }
+    });
     if (!recording) return sendError(res, 'Recording not found', null, 404);
 
     if (!canUserWatchRecording(recording, req.user._id)) {
@@ -182,7 +187,11 @@ export const watchRecording = async (req, res) => {
 export const streamRecording = async (req, res) => {
   try {
     const { recordingId } = req.params;
-    const recording = await Recording.findOne({ _id: recordingId, isDeleted: false });
+    const recording = await Recording.findOne({
+      _id: recordingId,
+      isDeleted: false,
+      isActive: { $ne: false }
+    });
     if (!recording) return res.status(404).json({ status: false, message: 'Recording not found' });
 
     if (!canUserWatchRecording(recording, req.user._id)) {
@@ -253,7 +262,11 @@ export const requestMorePlays = async (req, res) => {
     const { recordingId, reason = '' } = req.body;
     if (!recordingId) return sendError(res, 'recordingId is required', null, 400);
 
-    const recording = await Recording.findOne({ _id: recordingId, isDeleted: false });
+    const recording = await Recording.findOne({
+      _id: recordingId,
+      isDeleted: false,
+      isActive: { $ne: false }
+    });
     if (!recording) return sendError(res, 'Recording not found', null, 404);
 
     if (!canUserWatchRecording(recording, req.user._id)) {

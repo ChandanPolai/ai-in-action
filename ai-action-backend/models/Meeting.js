@@ -69,6 +69,10 @@ const meetingSchema = new mongoose.Schema(
       ref: 'Admin',
       default: null
     },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
     isDeleted: {
       type: Boolean,
       default: false

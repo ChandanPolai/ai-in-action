@@ -5,6 +5,7 @@ import {
   getMeeting,
   updateMeeting,
   deleteMeeting,
+  toggleMeetingStatus,
   markMeetingCompleted,
   listMeetingReviews
 } from '../../controllers/admin/meetingController.js';
@@ -19,6 +20,7 @@ router.post('/list', listMeetings);
 router.post('/get', getMeeting);
 router.post('/update', updateMeeting);
 router.post('/delete', deleteMeeting);
+router.post('/toggle-status', toggleMeetingStatus);
 router.post('/mark-completed', markMeetingCompleted);
 router.post('/reviews', listMeetingReviews);
 

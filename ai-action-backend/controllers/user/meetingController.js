@@ -28,6 +28,7 @@ export const listMyMeetings = async (req, res) => {
     const { filter = 'all' } = req.body;
     const query = {
       isDeleted: false,
+      isActive: { $ne: false },
       assignedUsers: req.user._id
     };
 
@@ -86,6 +87,7 @@ export const joinMeeting = async (req, res) => {
     const meeting = await Meeting.findOne({
       _id: meetingId,
       isDeleted: false,
+      isActive: { $ne: false },
       assignedUsers: req.user._id
     });
 
@@ -173,6 +175,7 @@ export const submitMeetingReview = async (req, res) => {
     const meeting = await Meeting.findOne({
       _id: meetingId,
       isDeleted: false,
+      isActive: { $ne: false },
       assignedUsers: req.user._id
     });
     if (!meeting) return sendError(res, 'Meeting not found', null, 404);

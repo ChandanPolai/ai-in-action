@@ -124,6 +124,10 @@ export const resetPassword = async (req, res) => {
       return sendError(res, 'Invalid or expired reset link. Please request a new one.', null, 400);
     }
 
+    if (!user.isActive) {
+      return sendError(res, 'Your account has been deactivated. Contact admin.', null, 403);
+    }
+
     user.password = await hashPassword(newPassword);
     user.resetPasswordToken = '';
     user.resetPasswordExpires = null;
