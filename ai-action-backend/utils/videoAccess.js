@@ -1,4 +1,4 @@
-import { Attendance, Meeting, Recording } from '../models/index.js';
+import { Attendance, Meeting, Recording, Workshop } from '../models/index.js';
 
 /**
  * Find recordings linked to a meeting (by meetingId or same day + session).
@@ -16,68 +16,71 @@ export const findRecordingsForMeeting = async (meeting) => {
 };
 
 /**
- * Add user IDs to recording allowedUsers; remove from deniedUsers.
+ * Add user IDs to a workshop's assignedUsers.
  */
-export const addUsersToRecordingAccess = async (recording, userIds = []) => {
-  if (!recording || !userIds.length) return recording;
+export const addUsersToWorkshopAccess = async (workshopId, userIds = []) => {
+  if (!workshopId || !userIds.length) return null;
 
-  const allowed = new Set((recording.allowedUsers || []).map((id) => id.toString()));
-  const denied = new Set((recording.deniedUsers || []).map((id) => id.toString()));
+  const workshop = await Workshop.findOne({ _id: workshopId, isDeleted: false });
+  if (!workshop) return null;
 
-  userIds.forEach((id) => {
-    const uid = id.toString();
-    allowed.add(uid);
-    denied.delete(uid);
-  });
-
-  recording.allowedUsers = [...allowed];
-  recording.deniedUsers = [...denied];
-  await recording.save();
-  return recording;
+  const assigned = new Set((workshop.assignedUsers || []).map((id) => id.toString()));
+  userIds.forEach((id) => assigned.add(id.toString()));
+  workshop.assignedUsers = [...assigned];
+  await workshop.save();
+  return workshop;
 };
 
 /**
- * Auto-grant video access to all absentees of a meeting (for linked recordings).
+ * Add absentees to the workshops of linked recordings.
  */
 export const grantVideoAccessToAbsentees = async (meetingId) => {
   const meeting = await Meeting.findOne({ _id: meetingId, isDeleted: false });
-  if (!meeting) return { granted: 0, recordingsUpdated: 0 };
+  if (!meeting) return { granted: 0, workshopsUpdated: 0 };
 
   const absentRecords = await Attendance.find({ meetingId, status: 'absent' }).select('userId');
   const userIds = absentRecords.map((r) => r.userId).filter(Boolean);
-  if (!userIds.length) return { granted: 0, recordingsUpdated: 0 };
+  if (!userIds.length) return { granted: 0, workshopsUpdated: 0 };
 
   const recordings = await findRecordingsForMeeting(meeting);
-  for (const recording of recordings) {
-    await addUsersToRecordingAccess(recording, userIds);
+  const workshopIds = [
+    ...new Set(recordings.map((r) => r.workshopId?.toString()).filter(Boolean))
+  ];
+
+  for (const wid of workshopIds) {
+    await addUsersToWorkshopAccess(wid, userIds);
   }
 
-  return { granted: userIds.length, recordingsUpdated: recordings.length };
+  return { granted: userIds.length, workshopsUpdated: workshopIds.length };
 };
 
 /**
- * Grant a single absent user access to recordings for their meeting.
+ * Grant a single absent user access via workshops of linked recordings.
  */
 export const grantVideoAccessToUserForMeeting = async (meetingId, userId) => {
-  if (!meetingId || !userId) return { recordingsUpdated: 0 };
+  if (!meetingId || !userId) return { workshopsUpdated: 0 };
 
   const meeting = await Meeting.findOne({ _id: meetingId, isDeleted: false });
-  if (!meeting) return { recordingsUpdated: 0 };
+  if (!meeting) return { workshopsUpdated: 0 };
 
   const recordings = await findRecordingsForMeeting(meeting);
-  for (const recording of recordings) {
-    await addUsersToRecordingAccess(recording, [userId]);
+  const workshopIds = [
+    ...new Set(recordings.map((r) => r.workshopId?.toString()).filter(Boolean))
+  ];
+
+  for (const wid of workshopIds) {
+    await addUsersToWorkshopAccess(wid, [userId]);
   }
 
-  return { recordingsUpdated: recordings.length };
+  return { workshopsUpdated: workshopIds.length };
 };
 
 /**
- * When a recording is created/updated, grant access to current absentees
+ * When a recording is created/updated, grant workshop access to absentees
  * of the linked meeting (or matching day/session meetings).
  */
 export const grantAbsenteesForRecording = async (recording) => {
-  if (!recording) return { granted: 0 };
+  if (!recording?.workshopId) return { granted: 0 };
 
   let meetings = [];
   if (recording.meetingId) {
@@ -91,7 +94,6 @@ export const grantAbsenteesForRecording = async (recording) => {
     });
   }
 
-  // Only auto-grant for completed meetings (everyone starts as absent before the session)
   meetings = meetings.filter((m) => m.status === 'completed');
   if (!meetings.length) return { granted: 0 };
 
@@ -104,13 +106,13 @@ export const grantAbsenteesForRecording = async (recording) => {
   const userIds = [...new Set(absentRecords.map((r) => r.userId.toString()))];
   if (!userIds.length) return { granted: 0 };
 
-  await addUsersToRecordingAccess(recording, userIds);
+  await addUsersToWorkshopAccess(recording.workshopId, userIds);
   return { granted: userIds.length };
 };
 
 export default {
   findRecordingsForMeeting,
-  addUsersToRecordingAccess,
+  addUsersToWorkshopAccess,
   grantVideoAccessToAbsentees,
   grantVideoAccessToUserForMeeting,
   grantAbsenteesForRecording

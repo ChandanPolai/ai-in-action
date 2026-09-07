@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  listMyWorkshops,
   listMyRecordings,
   watchRecording,
   streamRecording,
@@ -11,6 +12,7 @@ import { verifyUserToken } from '../../middlewares/userAuth.js';
 const router = express.Router();
 
 router.use(verifyUserToken);
+router.post('/workshops', listMyWorkshops);
 router.post('/list', listMyRecordings);
 router.post('/watch', watchRecording);
 router.get('/stream/:recordingId', streamRecording);

@@ -8,6 +8,7 @@ import UsersPage from './pages/Users';
 import MeetingsPage from './pages/Meetings';
 import AttendancePage from './pages/Attendance';
 import RecordingsPage from './pages/Recordings';
+import WorkshopsPage from './pages/Workshops';
 import PlayRequestsPage from './pages/PlayRequests';
 import CoursesPage from './pages/Courses';
 import ComplaintsPage from './pages/Complaints';
@@ -52,6 +53,8 @@ const DashboardWrapper = () => {
         return <AttendancePage />;
       case 'recordings':
         return <RecordingsPage />;
+      case 'workshops':
+        return <WorkshopsPage />;
       case 'play-requests':
         return <PlayRequestsPage />;
       case 'courses':

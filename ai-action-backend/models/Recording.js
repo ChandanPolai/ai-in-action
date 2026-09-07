@@ -1,12 +1,16 @@
 import mongoose from 'mongoose';
 
 /**
- * Session Recording with explicit video access control.
- * Present users do NOT automatically get access.
- * Admin must explicitly allow users via allowedUsers.
+ * Session Recording belonging to a Workshop.
+ * Access is controlled via workshop.assignedUsers (not per-video).
  */
 const recordingSchema = new mongoose.Schema(
   {
+    workshopId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Workshop',
+      default: null
+    },
     sessionTitle: {
       type: String,
       required: [true, 'Session title is required'],
@@ -45,12 +49,12 @@ const recordingSchema = new mongoose.Schema(
       ref: 'Meeting',
       default: null
     },
-    // Global play limit for every allowed user (default 1)
     maxPlayCount: {
       type: Number,
       default: 1,
       min: 1
     },
+    // Legacy fields — access now uses workshop.assignedUsers
     allowedUsers: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -83,6 +87,7 @@ const recordingSchema = new mongoose.Schema(
 );
 
 recordingSchema.index({ dayNumber: 1, sessionNumber: 1 });
+recordingSchema.index({ workshopId: 1 });
 recordingSchema.index({ allowedUsers: 1 });
 
 const Recording = mongoose.model('Recording', recordingSchema);

@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Pencil, Trash2, Shield, Upload, BarChart3 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, BarChart3 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   fetchRecordingsThunk,
   createRecordingThunk,
   updateRecordingThunk,
-  deleteRecordingThunk,
-  setAccessThunk,
-  fetchAccessMatrixThunk
+  deleteRecordingThunk
 } from '../store/slices/recordingsSlice';
+import { fetchWorkshopsThunk } from '../store/slices/workshopsSlice';
 import { postRequest } from '../services/apiClient';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -19,6 +18,7 @@ import Drawer from '../components/ui/Drawer';
 import { formatDate, formatDateTime } from '../utils/formatDate';
 
 const emptyForm = {
+  workshopId: '',
   sessionTitle: '',
   description: '',
   dayNumber: 1,
@@ -30,20 +30,19 @@ const emptyForm = {
 
 const RecordingsPage = () => {
   const dispatch = useDispatch();
-  const { list, loading, accessMatrix } = useSelector((state) => state.recordings);
+  const { list, loading } = useSelector((state) => state.recordings);
+  const { list: workshops } = useSelector((state) => state.workshops);
   const [modalOpen, setModalOpen] = useState(false);
-  const [accessOpen, setAccessOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [accessRecording, setAccessRecording] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [form, setForm] = useState(emptyForm);
-  const [selectedUsers, setSelectedUsers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [defaultLimit, setDefaultLimit] = useState(1);
 
   useEffect(() => {
     dispatch(fetchRecordingsThunk({}));
+    dispatch(fetchWorkshopsThunk({}));
     (async () => {
       try {
         const res = await postRequest('/admin/recordings/settings/get');
@@ -57,13 +56,18 @@ const RecordingsPage = () => {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ ...emptyForm, maxPlayCount: defaultLimit });
+    setForm({
+      ...emptyForm,
+      maxPlayCount: defaultLimit,
+      workshopId: ''
+    });
     setModalOpen(true);
   };
 
   const openEdit = (r) => {
     setEditing(r);
     setForm({
+      workshopId: r.workshopId || r.workshop?.id || '',
       sessionTitle: r.sessionTitle,
       description: r.description || '',
       dayNumber: r.dayNumber,
@@ -73,18 +77,6 @@ const RecordingsPage = () => {
       maxPlayCount: r.maxPlayCount || 1
     });
     setModalOpen(true);
-  };
-
-  const openAccess = async (r) => {
-    setAccessRecording(r);
-    setAccessOpen(true);
-    const result = await dispatch(fetchAccessMatrixThunk(r.id));
-    if (fetchAccessMatrixThunk.fulfilled.match(result)) {
-      const allowed = (result.payload.data.matrix || [])
-        .filter((u) => u.isAllowed)
-        .map((u) => u.id);
-      setSelectedUsers(allowed.map(String));
-    }
   };
 
   const openAnalytics = async (r) => {
@@ -102,6 +94,7 @@ const RecordingsPage = () => {
   const buildPayload = () => {
     if (form.videoFile) {
       const fd = new FormData();
+      fd.append('workshopId', form.workshopId);
       fd.append('sessionTitle', form.sessionTitle);
       fd.append('description', form.description || '');
       fd.append('dayNumber', String(form.dayNumber));
@@ -114,6 +107,7 @@ const RecordingsPage = () => {
     }
 
     const payload = {
+      workshopId: form.workshopId,
       sessionTitle: form.sessionTitle,
       description: form.description,
       dayNumber: form.dayNumber,
@@ -181,44 +175,18 @@ const RecordingsPage = () => {
     }
   };
 
-  const toggleAccessUser = (userId) => {
-    setSelectedUsers((prev) => {
-      const id = String(userId);
-      return prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-    });
-  };
-
-  const saveAccess = async () => {
-    setSaving(true);
-    try {
-      await dispatch(
-        setAccessThunk({
-          recordingId: accessRecording.id,
-          allowedUsers: selectedUsers,
-          deniedUsers: [],
-          mode: 'replace'
-        })
-      ).unwrap();
-      toast.success('Video access updated');
-      setAccessOpen(false);
-      dispatch(fetchRecordingsThunk({}));
-    } catch (err) {
-      toast.error(err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">Session Recordings</h2>
           <p className="text-sm text-slate-500">
-            Upload, set play limit, control access. Use Active/Inactive to show or hide a recording from users.
+            Upload videos anytime (workshop optional). Assign to a workshop later so users can watch.
           </p>
         </div>
-        <Button icon={Plus} onClick={openCreate}>Add Recording</Button>
+        <Button icon={Plus} onClick={openCreate}>
+          Add Recording
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -233,10 +201,15 @@ const RecordingsPage = () => {
                 <p className="font-bold text-slate-800">{r.sessionTitle}</p>
                 <p className="text-xs text-brand-600 font-semibold mt-1">
                   Day {r.dayNumber} · Session {r.sessionNumber}
+                  {r.workshop?.title ? ` · ${r.workshop.title}` : ''}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1.5 shrink-0">
-                <Badge variant="info">{(r.allowedUsers || []).length} allowed</Badge>
+                {r.workshop?.title ? (
+                  <Badge variant="info">{r.workshop.title}</Badge>
+                ) : (
+                  <Badge variant="default">Unassigned</Badge>
+                )}
                 <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
                   <button
                     type="button"
@@ -275,16 +248,25 @@ const RecordingsPage = () => {
               {r.videoUrl ? ' · URL' : ''}
             </p>
             <div className="flex items-center gap-1 border-t border-slate-100 pt-3">
-              <button onClick={() => openAccess(r)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 hover:bg-brand-100">
-                <Shield className="w-3.5 h-3.5" /> Access
-              </button>
-              <button onClick={() => openAnalytics(r)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-50 text-slate-700 hover:bg-slate-100">
+              <button
+                type="button"
+                onClick={() => openAnalytics(r)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-50 text-slate-700 hover:bg-slate-100"
+              >
                 <BarChart3 className="w-3.5 h-3.5" /> Analytics
               </button>
-              <button onClick={() => openEdit(r)} className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600">
+              <button
+                type="button"
+                onClick={() => openEdit(r)}
+                className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600"
+              >
                 <Pencil className="w-4 h-4" />
               </button>
-              <button onClick={() => handleDelete(r)} className="p-2 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600 ml-auto">
+              <button
+                type="button"
+                onClick={() => handleDelete(r)}
+                className="p-2 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600 ml-auto"
+              >
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -292,16 +274,66 @@ const RecordingsPage = () => {
         ))}
       </div>
 
-      <Drawer isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Recording' : 'Add Recording'} size="md">
+      <Drawer
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? 'Edit Recording' : 'Add Recording'}
+        size="md"
+      >
         <form onSubmit={handleSave} className="space-y-4">
-          <Input label="Session Title" required value={form.sessionTitle} onChange={(e) => setForm({ ...form, sessionTitle: e.target.value })} />
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Description</label>
-            <textarea className="custom-input !h-auto py-3" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Workshop (optional)
+            </label>
+            <select
+              className="custom-input"
+              value={form.workshopId}
+              onChange={(e) => setForm({ ...form, workshopId: e.target.value })}
+            >
+              <option value="">No workshop — assign later</option>
+              {workshops.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.title}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              Users only see videos after you assign them to a workshop and give workshop access.
+            </p>
+          </div>
+
+          <Input
+            label="Session Title"
+            required
+            value={form.sessionTitle}
+            onChange={(e) => setForm({ ...form, sessionTitle: e.target.value })}
+          />
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Description
+            </label>
+            <textarea
+              className="custom-input !h-auto py-3"
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Day Number" type="number" min={1} value={form.dayNumber} onChange={(e) => setForm({ ...form, dayNumber: Number(e.target.value) })} />
-            <Input label="Session Number" type="number" min={1} value={form.sessionNumber} onChange={(e) => setForm({ ...form, sessionNumber: Number(e.target.value) })} />
+            <Input
+              label="Day Number"
+              type="number"
+              min={1}
+              value={form.dayNumber}
+              onChange={(e) => setForm({ ...form, dayNumber: Number(e.target.value) })}
+            />
+            <Input
+              label="Session Number"
+              type="number"
+              min={1}
+              value={form.sessionNumber}
+              onChange={(e) => setForm({ ...form, sessionNumber: Number(e.target.value) })}
+            />
           </div>
 
           <Input
@@ -310,10 +342,12 @@ const RecordingsPage = () => {
             min={1}
             required
             value={form.maxPlayCount}
-            onChange={(e) => setForm({ ...form, maxPlayCount: Math.max(1, Number(e.target.value) || 1) })}
+            onChange={(e) =>
+              setForm({ ...form, maxPlayCount: Math.max(1, Number(e.target.value) || 1) })
+            }
           />
           <p className="text-xs text-slate-500 -mt-2">
-            Each allowed user can play this video this many times (default from Settings)
+            Each workshop user can play this video this many times (default from Settings)
           </p>
 
           <div>
@@ -334,7 +368,9 @@ const RecordingsPage = () => {
               />
             </label>
             {editing?.videoFile && !form.videoFile && (
-              <p className="text-xs text-slate-500 mt-2">Current file is already uploaded. Choose a new file to replace it.</p>
+              <p className="text-xs text-slate-500 mt-2">
+                Current file is already uploaded. Choose a new file to replace it.
+              </p>
             )}
           </div>
 
@@ -346,46 +382,14 @@ const RecordingsPage = () => {
           />
 
           <div className="flex gap-3 pt-4">
-            <Button variant="ghost" fullWidth type="button" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button fullWidth type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+            <Button variant="ghost" fullWidth type="button" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button fullWidth type="submit" disabled={saving}>
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
           </div>
         </form>
-      </Drawer>
-
-      <Drawer isOpen={accessOpen} onClose={() => setAccessOpen(false)} title={`Video Access — ${accessRecording?.sessionTitle || ''}`} size="lg">
-        <p className="text-sm text-slate-500 mb-4">
-          Shows username and Present/Absent status. Absent users get video access automatically when the meeting is completed or when attendance is marked Absent.
-        </p>
-        <div className="max-h-[55vh] overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 mb-4">
-          {accessMatrix.length === 0 && <p className="text-xs text-slate-400">No users available</p>}
-          {accessMatrix.map((u) => (
-            <label key={u.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selectedUsers.includes(String(u.id))}
-                onChange={() => toggleAccessUser(u.id)}
-                className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-slate-800">{u.username || u.name}</p>
-                <p className="text-xs text-slate-500 truncate">
-                  {u.email}
-                  {u.mobileNumber ? ` · ${u.mobileNumber}` : ''}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {u.isPresent && <Badge variant="success">Present</Badge>}
-                {u.isAbsent && <Badge variant="warning">Absent</Badge>}
-                {!u.attendanceStatus && <Badge variant="default">No attendance</Badge>}
-                {u.canWatch && <Badge variant="info">Can watch</Badge>}
-              </div>
-            </label>
-          ))}
-        </div>
-        <div className="flex gap-3">
-          <Button variant="ghost" fullWidth onClick={() => setAccessOpen(false)}>Cancel</Button>
-          <Button fullWidth onClick={saveAccess} disabled={saving}>{saving ? 'Saving...' : 'Save Access'}</Button>
-        </div>
       </Drawer>
 
       <Drawer
@@ -401,15 +405,21 @@ const RecordingsPage = () => {
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-xl bg-brand-50">
                 <p className="text-xs text-brand-700 font-semibold">Total plays</p>
-                <p className="text-2xl font-extrabold text-brand-800">{analytics.recording.totalPlays || 0}</p>
+                <p className="text-2xl font-extrabold text-brand-800">
+                  {analytics.recording.totalPlays || 0}
+                </p>
               </div>
               <div className="p-3 rounded-xl bg-slate-50">
                 <p className="text-xs text-slate-600 font-semibold">Unique viewers</p>
-                <p className="text-2xl font-extrabold text-slate-800">{analytics.recording.uniqueViewers || 0}</p>
+                <p className="text-2xl font-extrabold text-slate-800">
+                  {analytics.recording.uniqueViewers || 0}
+                </p>
               </div>
               <div className="p-3 rounded-xl bg-slate-50">
                 <p className="text-xs text-slate-600 font-semibold">Max / user</p>
-                <p className="text-2xl font-extrabold text-slate-800">{analytics.recording.maxPlayCount || 1}</p>
+                <p className="text-2xl font-extrabold text-slate-800">
+                  {analytics.recording.maxPlayCount || 1}
+                </p>
               </div>
             </div>
             <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -425,7 +435,9 @@ const RecordingsPage = () => {
                 <tbody>
                   {(analytics.viewers || []).length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-3 py-6 text-center text-slate-400">No watches yet</td>
+                      <td colSpan={4} className="px-3 py-6 text-center text-slate-400">
+                        No watches yet
+                      </td>
                     </tr>
                   )}
                   {(analytics.viewers || []).map((v) => (
@@ -434,7 +446,9 @@ const RecordingsPage = () => {
                         <p className="font-semibold text-slate-800">{v.user?.name || '—'}</p>
                         <p className="text-xs text-slate-500">{v.user?.email}</p>
                       </td>
-                      <td className="px-3 py-2">{v.playCount} / {v.maxAllowed}</td>
+                      <td className="px-3 py-2">
+                        {v.playCount} / {v.maxAllowed}
+                      </td>
                       <td className="px-3 py-2">{v.extraPlaysAllowed || 0}</td>
                       <td className="px-3 py-2 text-xs text-slate-500">
                         {v.lastWatchedAt ? formatDateTime(v.lastWatchedAt) : '—'}

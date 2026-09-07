@@ -1,9 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { Recording, VideoWatchLog, VideoPlayRequest } from '../../models/index.js';
+import { Recording, VideoWatchLog, VideoPlayRequest, Workshop } from '../../models/index.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
-import { canUserWatchRecording } from '../admin/recordingController.js';
+import { canUserWatchRecording, ensureWorkshopAccessPopulated } from '../admin/recordingController.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,18 +31,77 @@ const isExternalUrl = (url = '') =>
   url.includes('youtu.be') ||
   url.includes('vimeo');
 
+// @desc    List workshops assigned to the current user
+// @route   POST /api/user/recordings/workshops
+export const listMyWorkshops = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const workshops = await Workshop.find({
+      isDeleted: false,
+      isActive: { $ne: false },
+      assignedUsers: userId
+    })
+      .select('title description image createdAt')
+      .sort({ createdAt: -1 });
+
+    const ids = workshops.map((w) => w._id);
+    const counts = await Recording.aggregate([
+      {
+        $match: {
+          workshopId: { $in: ids },
+          isDeleted: false,
+          isActive: { $ne: false }
+        }
+      },
+      { $group: { _id: '$workshopId', count: { $sum: 1 } } }
+    ]);
+    const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
+
+    return sendSuccess(res, 'Workshops fetched successfully', {
+      workshops: workshops.map((w) => ({
+        id: w._id,
+        title: w.title,
+        description: w.description,
+        image: w.image,
+        videoCount: countMap.get(w._id.toString()) || 0,
+        createdAt: w.createdAt
+      }))
+    });
+  } catch (error) {
+    return sendError(res, error.message, null, 500);
+  }
+};
+
 // @desc    List recordings the user is allowed to watch (+ play usage)
 // @route   POST /api/user/recordings/list
 export const listMyRecordings = async (req, res) => {
   try {
     const userId = req.user._id;
+    const { workshopId } = req.body || {};
+
+    const workshopQuery = {
+      isDeleted: false,
+      isActive: { $ne: false },
+      assignedUsers: userId
+    };
+    if (workshopId) workshopQuery._id = workshopId;
+
+    const workshops = await Workshop.find(workshopQuery).select('_id title');
+    if (workshopId && !workshops.length) {
+      return sendError(res, 'Workshop not found or you do not have access', null, 403);
+    }
+
+    const workshopIds = workshops.map((w) => w._id);
+    const workshopTitleMap = new Map(workshops.map((w) => [w._id.toString(), w.title]));
 
     const recordings = await Recording.find({
       isDeleted: false,
       isActive: { $ne: false },
-      allowedUsers: userId,
-      deniedUsers: { $ne: userId }
-    }).sort({ dayNumber: 1, sessionNumber: 1 });
+      workshopId: { $in: workshopIds }
+    })
+      .populate('workshopId', 'title assignedUsers')
+      .sort({ dayNumber: 1, sessionNumber: 1 });
 
     const ids = recordings.map((r) => r._id);
     const logs = await VideoWatchLog.find({ recordingId: { $in: ids }, userId });
@@ -63,8 +122,14 @@ export const listMyRecordings = async (req, res) => {
         const maxAllowed = getMaxAllowed(r, log);
         const playCount = log?.playCount || 0;
         const remaining = Math.max(0, maxAllowed - playCount);
+        const workshopTitle =
+          (r.workshopId && r.workshopId.title) ||
+          workshopTitleMap.get((r.workshopId?._id || r.workshopId)?.toString()) ||
+          '';
         const item = {
           id: r._id,
+          workshopId: r.workshopId?._id || r.workshopId || null,
+          workshopTitle,
           sessionTitle: r.sessionTitle,
           description: r.description,
           dayNumber: r.dayNumber,
@@ -85,7 +150,10 @@ export const listMyRecordings = async (req, res) => {
 
     return sendSuccess(res, 'Recordings fetched successfully', {
       recordings: list,
-      byDay
+      byDay,
+      workshop: workshopId && workshops[0]
+        ? { id: workshops[0]._id, title: workshops[0].title }
+        : null
     });
   } catch (error) {
     return sendError(res, error.message, null, 500);
@@ -105,6 +173,8 @@ export const watchRecording = async (req, res) => {
       isActive: { $ne: false }
     });
     if (!recording) return sendError(res, 'Recording not found', null, 404);
+
+    await ensureWorkshopAccessPopulated(recording);
 
     if (!canUserWatchRecording(recording, req.user._id)) {
       return sendError(res, 'You do not have permission to watch this recording. Contact admin.', null, 403);
@@ -194,6 +264,8 @@ export const streamRecording = async (req, res) => {
     });
     if (!recording) return res.status(404).json({ status: false, message: 'Recording not found' });
 
+    await ensureWorkshopAccessPopulated(recording);
+
     if (!canUserWatchRecording(recording, req.user._id)) {
       return res.status(403).json({ status: false, message: 'Access denied' });
     }
@@ -268,6 +340,8 @@ export const requestMorePlays = async (req, res) => {
       isActive: { $ne: false }
     });
     if (!recording) return sendError(res, 'Recording not found', null, 404);
+
+    await ensureWorkshopAccessPopulated(recording);
 
     if (!canUserWatchRecording(recording, req.user._id)) {
       return sendError(res, 'You do not have permission for this recording', null, 403);

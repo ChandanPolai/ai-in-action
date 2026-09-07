@@ -85,3 +85,4 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlrZXkiOiI1YTBhYjYwMS05NWVlLTRmZTMtYmQ
 
 -----
 
+mongodb+srv://chandan:G90fm7AzH42ZClsN@cluster0.uyhpfob.mongodb.net/ai-in-action?retryWrites=true&w=majority

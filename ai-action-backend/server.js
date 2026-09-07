@@ -19,6 +19,7 @@ import adminAttendanceRoutes from './routes/admin/attendanceRoutes.js';
 import adminRecordingRoutes from './routes/admin/recordingRoutes.js';
 import adminCourseRoutes from './routes/admin/courseRoutes.js';
 import adminComplaintRoutes from './routes/admin/complaintRoutes.js';
+import adminWorkshopRoutes from './routes/admin/workshopRoutes.js';
 
 import userAuthRoutes from './routes/user/authRoutes.js';
 import userMeetingRoutes from './routes/user/meetingRoutes.js';
@@ -56,6 +57,7 @@ app.use('/uploads/admin', express.static(path.join(__dirname, 'uploads/admin')))
 app.use('/uploads/users', express.static(path.join(__dirname, 'uploads/users')));
 app.use('/uploads/courses', express.static(path.join(__dirname, 'uploads/courses')));
 app.use('/uploads/complaints', express.static(path.join(__dirname, 'uploads/complaints')));
+app.use('/uploads/workshops', express.static(path.join(__dirname, 'uploads/workshops')));
 // Recordings are served only via authenticated stream — no public download URL
 // app.use('/uploads/recordings', express.static(path.join(__dirname, 'uploads/recordings')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
@@ -82,6 +84,7 @@ app.use('/api/admin/attendance', adminAttendanceRoutes);
 app.use('/api/admin/recordings', adminRecordingRoutes);
 app.use('/api/admin/courses', adminCourseRoutes);
 app.use('/api/admin/complaints', adminComplaintRoutes);
+app.use('/api/admin/workshops', adminWorkshopRoutes);
 
 // User APIs
 app.use('/api/user/auth', userAuthRoutes);

@@ -2,7 +2,7 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { User, Attendance, Meeting, MeetingReview, Recording, VideoWatchLog, VideoPlayRequest, Complaint, Notification } from '../../models/index.js';
+import { User, Attendance, Meeting, MeetingReview, Recording, VideoWatchLog, VideoPlayRequest, Complaint, Notification, Workshop } from '../../models/index.js';
 import { hashPassword } from '../../utils/password.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
 import { sendLoginCredentialsEmail } from '../../utils/emailService.js';
@@ -202,6 +202,7 @@ export const deleteUser = async (req, res) => {
       reviewsDeleted,
       meetingsUpdated,
       recordingsUpdated,
+      workshopsUpdated,
       watchLogsDeleted,
       playRequestsDeleted,
       complaintsDeleted,
@@ -214,6 +215,7 @@ export const deleteUser = async (req, res) => {
         { $or: [{ allowedUsers: userId }, { deniedUsers: userId }] },
         { $pull: { allowedUsers: userId, deniedUsers: userId } }
       ),
+      Workshop.updateMany({ assignedUsers: userId }, { $pull: { assignedUsers: userId } }),
       VideoWatchLog.deleteMany({ userId }),
       VideoPlayRequest.deleteMany({ userId }),
       Complaint.deleteMany({ userId }),
@@ -226,6 +228,7 @@ export const deleteUser = async (req, res) => {
         reviews: reviewsDeleted.deletedCount || 0,
         meetings: meetingsUpdated.modifiedCount || 0,
         recordings: recordingsUpdated.modifiedCount || 0,
+        workshops: workshopsUpdated.modifiedCount || 0,
         watchLogs: watchLogsDeleted.deletedCount || 0,
         playRequests: playRequestsDeleted.deletedCount || 0,
         complaints: complaintsDeleted.deletedCount || 0,

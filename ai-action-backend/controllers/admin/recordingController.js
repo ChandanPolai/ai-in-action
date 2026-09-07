@@ -1,9 +1,13 @@
-import { Recording, User, VideoWatchLog, VideoPlayRequest, AppSettings, Attendance, Meeting } from '../../models/index.js';
+import { Recording, User, VideoWatchLog, VideoPlayRequest, AppSettings, Attendance, Meeting, Workshop } from '../../models/index.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
 import { grantAbsenteesForRecording } from '../../utils/videoAccess.js';
 
 const formatRecording = (r, stats = null) => ({
   id: r._id,
+  workshopId: r.workshopId?._id || r.workshopId || null,
+  workshop: r.workshopId && typeof r.workshopId === 'object' && r.workshopId.title
+    ? { id: r.workshopId._id, title: r.workshopId.title }
+    : null,
   sessionTitle: r.sessionTitle,
   description: r.description,
   dayNumber: r.dayNumber,
@@ -35,15 +39,34 @@ const getDefaultMaxPlayCount = async () => {
   return Math.max(1, Number(settings.defaultMaxPlayCount) || 1);
 };
 /**
- * Check if a user can watch a recording.
- * Denied list always wins. Allowed list is required — no auto-grant for present.
+ * Check if a user can watch via workshop.assignedUsers.
+ * Prefer populated workshopId.assignedUsers; fall back to legacy allowedUsers.
  */
 export const canUserWatchRecording = (recording, userId) => {
   const uid = userId.toString();
-  const denied = (recording.deniedUsers || []).map((id) => id.toString());
-  if (denied.includes(uid)) return false;
-  const allowed = (recording.allowedUsers || []).map((id) => id.toString());
+  const workshop = recording.workshopId;
+
+  if (workshop && typeof workshop === 'object' && Array.isArray(workshop.assignedUsers)) {
+    return workshop.assignedUsers.some((id) => (id._id || id).toString() === uid);
+  }
+
+  const allowed = (recording.allowedUsers || []).map((id) => (id._id || id).toString());
   return allowed.includes(uid);
+};
+
+export const ensureWorkshopAccessPopulated = async (recording) => {
+  if (!recording) return recording;
+  if (
+    recording.workshopId &&
+    typeof recording.workshopId === 'object' &&
+    Array.isArray(recording.workshopId.assignedUsers)
+  ) {
+    return recording;
+  }
+  if (recording.workshopId) {
+    await recording.populate('workshopId', 'title assignedUsers isActive isDeleted');
+  }
+  return recording;
 };
 
 // @desc    Create Recording
@@ -51,6 +74,7 @@ export const canUserWatchRecording = (recording, userId) => {
 export const createRecording = async (req, res) => {
   try {
     const {
+      workshopId,
       sessionTitle,
       description,
       dayNumber = 1,
@@ -58,11 +82,13 @@ export const createRecording = async (req, res) => {
       videoUrl = '',
       meetingId = null,
       maxPlayCount,
-      allowedUsers = [],
-      deniedUsers = [],
       isActive = true
     } = req.body;
 
+    if (workshopId) {
+      const workshop = await Workshop.findOne({ _id: workshopId, isDeleted: false });
+      if (!workshop) return sendError(res, 'Workshop not found', null, 404);
+    }
     if (!sessionTitle) {
       return sendError(res, 'Session title is required', null, 400);
     }
@@ -73,19 +99,11 @@ export const createRecording = async (req, res) => {
       return sendError(res, 'Provide a video URL or upload a video file', null, 400);
     }
 
-    let allowed = allowedUsers;
-    let denied = deniedUsers;
-    if (typeof allowedUsers === 'string') {
-      try { allowed = JSON.parse(allowedUsers); } catch { allowed = allowedUsers ? [allowedUsers] : []; }
-    }
-    if (typeof deniedUsers === 'string') {
-      try { denied = JSON.parse(deniedUsers); } catch { denied = deniedUsers ? [deniedUsers] : []; }
-    }
-
     const defaultLimit = await getDefaultMaxPlayCount();
     const playLimit = Math.max(1, Number(maxPlayCount) || defaultLimit);
 
     const recording = await Recording.create({
+      workshopId: workshopId || null,
       sessionTitle: sessionTitle.trim(),
       description: description || '',
       dayNumber: Number(dayNumber) || 1,
@@ -94,16 +112,14 @@ export const createRecording = async (req, res) => {
       videoFile,
       meetingId: meetingId || null,
       maxPlayCount: playLimit,
-      allowedUsers: Array.isArray(allowed) ? allowed : [],
-      deniedUsers: Array.isArray(denied) ? denied : [],
+      allowedUsers: [],
+      deniedUsers: [],
       isActive: String(isActive) !== 'false' && isActive !== false,
       uploadDate: new Date(),
       createdBy: req.admin._id
     });
-    await recording.populate('allowedUsers', 'name email');
-    await recording.populate('deniedUsers', 'name email');
+    await recording.populate('workshopId', 'title assignedUsers');
 
-    // Auto: absentees of linked meeting get video access
     await grantAbsenteesForRecording(recording);
 
     return sendSuccess(res, 'Recording created successfully', { recording: formatRecording(recording) }, 201);
@@ -116,10 +132,11 @@ export const createRecording = async (req, res) => {
 // @route   POST /api/admin/recordings/list
 export const listRecordings = async (req, res) => {
   try {
-    const { search = '', dayNumber, isActive = 'all', page = 1, limit = 50 } = req.body;
+    const { search = '', dayNumber, workshopId, isActive = 'all', page = 1, limit = 50 } = req.body;
     const query = { isDeleted: false };
 
     if (dayNumber) query.dayNumber = Number(dayNumber);
+    if (workshopId) query.workshopId = workshopId;
     if (isActive === 'active') query.isActive = { $ne: false };
     if (isActive === 'inactive') query.isActive = false;
     if (search) {
@@ -130,8 +147,7 @@ export const listRecordings = async (req, res) => {
     const skip = (Math.max(1, Number(page)) - 1) * Number(limit);
     const [recordings, total] = await Promise.all([
       Recording.find(query)
-        .populate('allowedUsers', 'name email profilePhoto')
-        .populate('deniedUsers', 'name email profilePhoto')
+        .populate('workshopId', 'title assignedUsers')
         .populate('meetingId', 'title meetingDate')
         .sort({ dayNumber: 1, sessionNumber: 1, uploadDate: -1 })
         .skip(skip)
@@ -170,8 +186,7 @@ export const getRecording = async (req, res) => {
     if (!recordingId) return sendError(res, 'recordingId is required', null, 400);
 
     const recording = await Recording.findOne({ _id: recordingId, isDeleted: false })
-      .populate('allowedUsers', 'name email profilePhoto')
-      .populate('deniedUsers', 'name email profilePhoto')
+      .populate('workshopId', 'title assignedUsers')
       .populate('meetingId', 'title meetingDate');
 
     if (!recording) return sendError(res, 'Recording not found', null, 404);
@@ -188,6 +203,7 @@ export const updateRecording = async (req, res) => {
   try {
     const {
       recordingId,
+      workshopId,
       sessionTitle,
       description,
       dayNumber,
@@ -203,6 +219,15 @@ export const updateRecording = async (req, res) => {
     const recording = await Recording.findOne({ _id: recordingId, isDeleted: false });
     if (!recording) return sendError(res, 'Recording not found', null, 404);
 
+    if (workshopId !== undefined) {
+      if (!workshopId || workshopId === 'null' || workshopId === '') {
+        recording.workshopId = null;
+      } else {
+        const workshop = await Workshop.findOne({ _id: workshopId, isDeleted: false });
+        if (!workshop) return sendError(res, 'Workshop not found', null, 404);
+        recording.workshopId = workshopId;
+      }
+    }
     if (sessionTitle !== undefined) recording.sessionTitle = sessionTitle.trim();
     if (description !== undefined) recording.description = description;
     if (dayNumber !== undefined) recording.dayNumber = Number(dayNumber);
@@ -216,11 +241,9 @@ export const updateRecording = async (req, res) => {
     if (req.file) recording.videoFile = `/uploads/recordings/${req.file.filename}`;
     await recording.save();
 
-    // Auto: absentees get video access when recording is linked / updated
     await grantAbsenteesForRecording(recording);
 
-    await recording.populate('allowedUsers', 'name email profilePhoto');
-    await recording.populate('deniedUsers', 'name email profilePhoto');
+    await recording.populate('workshopId', 'title assignedUsers');
 
     return sendSuccess(res, 'Recording updated successfully', { recording: formatRecording(recording) });
   } catch (error) {
@@ -261,8 +284,7 @@ export const toggleRecordingStatus = async (req, res) => {
       recording.isActive = recording.isActive === false;
     }
     await recording.save();
-    await recording.populate('allowedUsers', 'name email');
-    await recording.populate('deniedUsers', 'name email');
+    await recording.populate('workshopId', 'title');
 
     return sendSuccess(
       res,
@@ -274,55 +296,26 @@ export const toggleRecordingStatus = async (req, res) => {
   }
 };
 
-// @desc    Set video access permissions (core feature)
-// @route   POST /api/admin/recordings/set-access
+// Legacy — access is managed on Workshop
 export const setRecordingAccess = async (req, res) => {
   try {
-    const { recordingId, allowedUsers = [], deniedUsers = [], mode = 'replace' } = req.body;
-
+    const { recordingId } = req.body;
     if (!recordingId) return sendError(res, 'recordingId is required', null, 400);
 
     const recording = await Recording.findOne({ _id: recordingId, isDeleted: false });
     if (!recording) return sendError(res, 'Recording not found', null, 404);
 
-    const allowed = Array.isArray(allowedUsers) ? allowedUsers : [];
-    const denied = Array.isArray(deniedUsers) ? deniedUsers : [];
-
-    if (mode === 'add') {
-      const currentAllowed = new Set(recording.allowedUsers.map((id) => id.toString()));
-      allowed.forEach((id) => currentAllowed.add(id.toString()));
-      recording.allowedUsers = [...currentAllowed];
-
-      const currentDenied = new Set(recording.deniedUsers.map((id) => id.toString()));
-      denied.forEach((id) => currentDenied.add(id.toString()));
-      // Remove from denied if being allowed
-      allowed.forEach((id) => currentDenied.delete(id.toString()));
-      recording.deniedUsers = [...currentDenied];
-    } else if (mode === 'remove') {
-      const removeSet = new Set(allowed.map((id) => id.toString()));
-      recording.allowedUsers = recording.allowedUsers.filter((id) => !removeSet.has(id.toString()));
-      if (denied.length) {
-        const denyRemove = new Set(denied.map((id) => id.toString()));
-        recording.deniedUsers = recording.deniedUsers.filter((id) => !denyRemove.has(id.toString()));
-      }
-    } else {
-      // replace
-      recording.allowedUsers = allowed;
-      recording.deniedUsers = denied;
-    }
-
-    await recording.save();
-    await recording.populate('allowedUsers', 'name email profilePhoto isActive');
-    await recording.populate('deniedUsers', 'name email profilePhoto');
-
-    return sendSuccess(res, 'Video access updated successfully', { recording: formatRecording(recording) });
+    return sendError(
+      res,
+      'Video access is managed on the Workshop. Use /api/admin/workshops/set-access',
+      { workshopId: recording.workshopId },
+      400
+    );
   } catch (error) {
     return sendError(res, error.message, null, 500);
   }
 };
 
-// @desc    Get all users with access flags for a recording (+ present/absent)
-// @route   POST /api/admin/recordings/access-matrix
 export const getAccessMatrix = async (req, res) => {
   try {
     const { recordingId } = req.body;
@@ -331,72 +324,12 @@ export const getAccessMatrix = async (req, res) => {
     const recording = await Recording.findOne({ _id: recordingId, isDeleted: false });
     if (!recording) return sendError(res, 'Recording not found', null, 404);
 
-    const users = await User.find({ isDeleted: false, isActive: true })
-      .select('name email mobileNumber profilePhoto')
-      .sort({ name: 1 });
-
-    const allowedSet = new Set(recording.allowedUsers.map((id) => id.toString()));
-    const deniedSet = new Set(recording.deniedUsers.map((id) => id.toString()));
-
-    // Attendance for linked meeting, or same day + session meetings
-    let meetingIds = [];
-    if (recording.meetingId) {
-      meetingIds = [recording.meetingId];
-    } else {
-      const meetings = await Meeting.find({
-        isDeleted: false,
-        dayNumber: recording.dayNumber,
-        sessionNumber: recording.sessionNumber
-      }).select('_id');
-      meetingIds = meetings.map((m) => m._id);
-    }
-
-    const attendanceMap = new Map();
-    if (meetingIds.length) {
-      const attendance = await Attendance.find({ meetingId: { $in: meetingIds } }).select(
-        'userId status meetingId'
-      );
-      // Prefer most recent / any present over absent if multiple meetings
-      attendance.forEach((a) => {
-        const uid = a.userId.toString();
-        const prev = attendanceMap.get(uid);
-        if (!prev || (prev === 'absent' && a.status === 'present')) {
-          attendanceMap.set(uid, a.status);
-        }
-      });
-    }
-
-    const matrix = users.map((u) => {
-      const uid = u._id.toString();
-      const attendanceStatus = attendanceMap.has(uid) ? attendanceMap.get(uid) : null;
-      return {
-        id: u._id,
-        name: u.name,
-        username: u.name,
-        email: u.email,
-        mobileNumber: u.mobileNumber || '',
-        profilePhoto: u.profilePhoto,
-        canWatch: allowedSet.has(uid) && !deniedSet.has(uid),
-        isAllowed: allowedSet.has(uid),
-        isDenied: deniedSet.has(uid),
-        attendanceStatus, // 'present' | 'absent' | null
-        isPresent: attendanceStatus === 'present',
-        isAbsent: attendanceStatus === 'absent'
-      };
-    });
-
-    // Sort: absent first (likely need video), then present, then no attendance
-    matrix.sort((a, b) => {
-      const rank = (x) => (x.isAbsent ? 0 : x.isPresent ? 1 : 2);
-      const d = rank(a) - rank(b);
-      if (d !== 0) return d;
-      return (a.name || '').localeCompare(b.name || '');
-    });
-
-    return sendSuccess(res, 'Access matrix fetched successfully', {
-      recording: formatRecording(recording),
-      matrix
-    });
+    return sendError(
+      res,
+      'Access matrix is on the Workshop. Use /api/admin/workshops/access-matrix',
+      { workshopId: recording.workshopId },
+      400
+    );
   } catch (error) {
     return sendError(res, error.message, null, 500);
   }

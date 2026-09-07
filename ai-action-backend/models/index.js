@@ -10,6 +10,7 @@ import AppSettings from './AppSettings.js';
 import Course from './Course.js';
 import Complaint from './Complaint.js';
 import MeetingReview from './MeetingReview.js';
+import Workshop from './Workshop.js';
 
 export {
   Admin,
@@ -23,7 +24,8 @@ export {
   AppSettings,
   Course,
   Complaint,
-  MeetingReview
+  MeetingReview,
+  Workshop
 };
 
 export default {
@@ -38,5 +40,6 @@ export default {
   AppSettings,
   Course,
   Complaint,
-  MeetingReview
+  MeetingReview,
+  Workshop
 };
