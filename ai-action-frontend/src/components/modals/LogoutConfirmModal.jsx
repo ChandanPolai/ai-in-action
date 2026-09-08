@@ -9,7 +9,7 @@ export const LogoutConfirmModal = ({ isOpen, onClose, onConfirm }) => (
       <div className="mx-auto w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center">
         <AlertTriangle className="w-7 h-7 text-amber-500" />
       </div>
-      <p className="text-slate-600 text-sm">Are you sure you want to log out of the Student Portal?</p>
+      <p className="text-slate-600 text-sm">Are you sure you want to log out of the User Participant Portal?</p>
       <div className="flex gap-3 pt-2">
         <Button variant="ghost" fullWidth onClick={onClose}>Cancel</Button>
         <Button variant="danger" fullWidth onClick={onConfirm}>Logout</Button>

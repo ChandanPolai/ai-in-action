@@ -6,6 +6,7 @@ import attendanceReducer from './slices/attendanceSlice';
 import recordingsReducer from './slices/recordingsSlice';
 import coursesReducer from './slices/coursesSlice';
 import workshopsReducer from './slices/workshopsSlice';
+import bonusesReducer from './slices/bonusesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -15,7 +16,8 @@ export const store = configureStore({
     attendance: attendanceReducer,
     recordings: recordingsReducer,
     courses: coursesReducer,
-    workshops: workshopsReducer
+    workshops: workshopsReducer,
+    bonuses: bonusesReducer
   }
 });
 

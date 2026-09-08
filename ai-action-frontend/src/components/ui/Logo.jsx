@@ -2,7 +2,7 @@ import React from 'react';
 
 const LOGO_SRC = `${import.meta.env.BASE_URL}logo.png`;
 
-export const Logo = ({ size = 'md', showText = true, subtitle = 'Student Portal' }) => {
+export const Logo = ({ size = 'md', showText = true, subtitle = 'User Participant Portal' }) => {
   const sizes = {
     sm: 'w-9 h-9',
     md: 'w-11 h-11',

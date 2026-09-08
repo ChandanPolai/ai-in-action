@@ -5,7 +5,7 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "nodemon server.js",
     "dev": "nodemon server.js",
     "migrate:workshops": "node scripts/migrateRecordingsToWorkshops.js",
     "build:admin": "cd ../ai-action-admin && npm run build",

@@ -20,6 +20,7 @@ import adminRecordingRoutes from './routes/admin/recordingRoutes.js';
 import adminCourseRoutes from './routes/admin/courseRoutes.js';
 import adminComplaintRoutes from './routes/admin/complaintRoutes.js';
 import adminWorkshopRoutes from './routes/admin/workshopRoutes.js';
+import adminBonusRoutes from './routes/admin/bonusRoutes.js';
 
 import userAuthRoutes from './routes/user/authRoutes.js';
 import userMeetingRoutes from './routes/user/meetingRoutes.js';
@@ -27,6 +28,7 @@ import userAttendanceRoutes from './routes/user/attendanceRoutes.js';
 import userRecordingRoutes from './routes/user/recordingRoutes.js';
 import userCourseRoutes from './routes/user/courseRoutes.js';
 import userComplaintRoutes from './routes/user/complaintRoutes.js';
+import userBonusRoutes from './routes/user/bonusRoutes.js';
 
 dotenv.config();
 
@@ -58,6 +60,7 @@ app.use('/uploads/users', express.static(path.join(__dirname, 'uploads/users')))
 app.use('/uploads/courses', express.static(path.join(__dirname, 'uploads/courses')));
 app.use('/uploads/complaints', express.static(path.join(__dirname, 'uploads/complaints')));
 app.use('/uploads/workshops', express.static(path.join(__dirname, 'uploads/workshops')));
+app.use('/uploads/bonuses', express.static(path.join(__dirname, 'uploads/bonuses')));
 // Recordings are served only via authenticated stream — no public download URL
 // app.use('/uploads/recordings', express.static(path.join(__dirname, 'uploads/recordings')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
@@ -85,6 +88,7 @@ app.use('/api/admin/recordings', adminRecordingRoutes);
 app.use('/api/admin/courses', adminCourseRoutes);
 app.use('/api/admin/complaints', adminComplaintRoutes);
 app.use('/api/admin/workshops', adminWorkshopRoutes);
+app.use('/api/admin/bonuses', adminBonusRoutes);
 
 // User APIs
 app.use('/api/user/auth', userAuthRoutes);
@@ -93,6 +97,7 @@ app.use('/api/user/attendance', userAttendanceRoutes);
 app.use('/api/user/recordings', userRecordingRoutes);
 app.use('/api/user/courses', userCourseRoutes);
 app.use('/api/user/complaints', userComplaintRoutes);
+app.use('/api/user/bonuses', userBonusRoutes);
 
 const sendSpaIndex = (folderName, missingMsg) => (req, res) => {
   const indexFile = path.join(__dirname, folderName, 'index.html');
@@ -120,6 +125,7 @@ const userSpaPaths = [
   '/recordings',
   '/courses',
   '/feedback',
+  '/bonus',
   '/profile'
 ];
 app.get(userSpaPaths, (req, res) => {

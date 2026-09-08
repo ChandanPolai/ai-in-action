@@ -11,6 +11,7 @@ import Course from './Course.js';
 import Complaint from './Complaint.js';
 import MeetingReview from './MeetingReview.js';
 import Workshop from './Workshop.js';
+import Bonus from './Bonus.js';
 
 export {
   Admin,
@@ -25,7 +26,8 @@ export {
   Course,
   Complaint,
   MeetingReview,
-  Workshop
+  Workshop,
+  Bonus
 };
 
 export default {
@@ -41,5 +43,6 @@ export default {
   Course,
   Complaint,
   MeetingReview,
-  Workshop
+  Workshop,
+  Bonus
 };

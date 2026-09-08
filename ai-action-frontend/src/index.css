@@ -93,7 +93,7 @@ body {
     linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
 }
 
-/* Student portal login — distinct geometric pattern (different from admin) */
+/* User Participant Portal login — distinct geometric pattern (different from admin) */
 .student-auth-bg {
   background-color: #0b1f44;
   background-image:

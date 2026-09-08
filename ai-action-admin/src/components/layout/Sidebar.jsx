@@ -12,6 +12,7 @@ import {
   MessageSquareWarning,
   Star,
   Settings,
+  Gift,
   ChevronRight,
   ChevronLeft,
   X,
@@ -28,6 +29,7 @@ export const adminNavItems = [
   { id: 'workshops', label: 'Workshops', icon: Layers },
   { id: 'play-requests', label: 'Play Requests', icon: Inbox },
   { id: 'courses', label: 'Courses', icon: BookOpen },
+  { id: 'bonus', label: 'Bonus', icon: Gift },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareWarning },
   { id: 'settings', label: 'Settings', icon: Settings }
 ];

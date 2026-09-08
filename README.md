@@ -86,3 +86,25 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlrZXkiOiI1YTBhYjYwMS05NWVlLTRmZTMtYmQ
 -----
 
 mongodb+srv://chandan:G90fm7AzH42ZClsN@cluster0.uyhpfob.mongodb.net/ai-in-action?retryWrites=true&w=majority
+
+
+
+*  Billing / GST Invoice Module -
+
+*  Bonus Module - admin panel per henaa ek option abnado bonous karke ok jsime admin kuch cerate akrega ttile dection  rs dena he to iameg kuch bhi fileabrtesdena h to createakrke rkagea mutple userskoassgin akrega jsisie usse uske panel perdhikega simple saabhikeliye itnakardo ok please 
+
+*  Certificate Module -  check with mihir made something so please check with him first [todo]
+
+*  Video Playback Rules [todo]
+
+Each participant can use the Play action a maximum of 3 times for each video.
+
+If a participant stops a video before it is completed, they should be able to resume from the point where they stopped.
+
+Stopping or pausing a video should not consume a play attempt.
+
+The Play Used count should be updated only when the video is successfully completed.
+
+Once the video is completed, the play count should be updated accordingly.
+
+After the participant reaches the maximum allowed play count, no additional plays should be allowed.

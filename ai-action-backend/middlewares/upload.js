@@ -13,6 +13,7 @@ const uploadExcelDir = path.join(__dirname, '../uploads/excel');
 const uploadCourseDir = path.join(__dirname, '../uploads/courses');
 const uploadComplaintDir = path.join(__dirname, '../uploads/complaints');
 const uploadWorkshopDir = path.join(__dirname, '../uploads/workshops');
+const uploadBonusDir = path.join(__dirname, '../uploads/bonuses');
 
 [
   uploadAdminDir,
@@ -21,7 +22,8 @@ const uploadWorkshopDir = path.join(__dirname, '../uploads/workshops');
   uploadExcelDir,
   uploadCourseDir,
   uploadComplaintDir,
-  uploadWorkshopDir
+  uploadWorkshopDir,
+  uploadBonusDir
 ].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -114,6 +116,12 @@ export const uploadWorkshopImage = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
+export const uploadBonusImage = multer({
+  storage: makeStorage(uploadBonusDir, 'bonus'),
+  fileFilter: imageFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
 export default {
   uploadAdminAvatar,
   uploadUserAvatar,
@@ -121,5 +129,6 @@ export default {
   uploadExcelFile,
   uploadCourseImage,
   uploadComplaintImage,
-  uploadWorkshopImage
+  uploadWorkshopImage,
+  uploadBonusImage
 };

@@ -51,7 +51,7 @@ const Login = () => {
           </div>
           <p className="text-sky-100/90 text-sm flex items-center justify-center gap-1.5">
             <Sparkles className="w-4 h-4" />
-            Student Portal — join live sessions &amp; learn
+            User Participant Portal — join live sessions &amp; learn
           </p>
         </div>
 
