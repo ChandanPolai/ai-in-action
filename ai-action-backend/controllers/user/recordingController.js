@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { Recording, VideoWatchLog, VideoPlayRequest, Workshop } from '../../models/index.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
 import { canUserWatchRecording, ensureWorkshopAccessPopulated } from '../admin/recordingController.js';
+import { signVideoStreamToken } from '../../utils/videoStreamToken.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -217,15 +218,31 @@ export const watchRecording = async (req, res) => {
 
     const remaining = Math.max(0, maxAllowed - log.playCount);
 
-    // Uploaded files: authenticated stream only (no public URL / no download link)
+    // Uploaded files: short-lived stream token (no permanent URL / no login token in video src)
     let playbackUrl = '';
     let streamPath = '';
+    let streamToken = '';
     let isStream = false;
+    let fileSize = 0;
 
     if (hasFile) {
       isStream = true;
       streamPath = `/api/user/recordings/stream/${recording._id}`;
-      playbackUrl = streamPath;
+      streamToken = signVideoStreamToken({
+        userId: req.user._id,
+        recordingId: recording._id
+      });
+      // Do not put a usable absolute stream URL in the response body
+      playbackUrl = '';
+      try {
+        const relative = String(recording.videoFile).replace(/^\//, '');
+        const filePath = path.join(__dirname, '../..', relative);
+        if (fs.existsSync(filePath)) {
+          fileSize = fs.statSync(filePath).size;
+        }
+      } catch {
+        fileSize = 0;
+      }
     } else if (hasUrl) {
       playbackUrl = recording.videoUrl;
       isStream = false;
@@ -240,6 +257,8 @@ export const watchRecording = async (req, res) => {
         sessionNumber: recording.sessionNumber,
         playbackUrl,
         streamPath,
+        streamToken,
+        fileSize,
         isStream,
         isExternal: isExternalUrl(playbackUrl),
         playCount: log.playCount,
@@ -304,6 +323,14 @@ export const streamRecording = async (req, res) => {
     res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    // Help deter hotlinking / casual download tools
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+
+    if (req.method === 'HEAD') {
+      res.setHeader('Content-Length', fileSize);
+      return res.status(200).end();
+    }
 
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');

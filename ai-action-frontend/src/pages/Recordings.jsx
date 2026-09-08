@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Play, ShieldAlert, Send, ArrowLeft, Layers } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { postRequest, imageUrl } from '../services/apiClient';
-import { getUserToken } from '../utils/storage';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -25,9 +24,17 @@ const toEmbedSrc = (url = '') => {
   return `${src}${sep}modestbranding=1&rel=0&controls=1`;
 };
 
-const ProtectedVideo = ({ streamUrl, title }) => {
+/**
+ * Secure player: fetch with stream token, then revoke blob URL ASAP after the element loads it.
+ * HTML me blob: string dikh sakti hai, lekin revoke ke baad new tab me paste = fail.
+ * (Browser Blob/srcObject bhi quietly blob: banata hai — isliye revoke zaroori hai.)
+ */
+const ProtectedVideo = ({ streamPath, streamToken, title }) => {
   const videoRef = useRef(null);
   const [blocked, setBlocked] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -54,6 +61,116 @@ const ProtectedVideo = ({ streamUrl, title }) => {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl = '';
+    let revokeTimer = 0;
+
+    const revokeNow = () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = '';
+      }
+      if (revokeTimer) {
+        window.clearTimeout(revokeTimer);
+        revokeTimer = 0;
+      }
+    };
+
+    const clearVideo = (el) => {
+      if (!el) return;
+      try {
+        el.pause();
+      } catch {
+        /* ignore */
+      }
+      el.removeAttribute('src');
+      el.src = '';
+      try {
+        el.srcObject = null;
+      } catch {
+        /* ignore */
+      }
+      try {
+        el.load();
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      setReady(false);
+      revokeNow();
+      clearVideo(videoRef.current);
+
+      if (!streamPath || !streamToken) {
+        setError('Video session missing. Open the video again.');
+        setLoading(false);
+        return;
+      }
+
+      const absolute = `${API_BASE.replace(/\/api$/, '')}${streamPath}`;
+
+      try {
+        const res = await fetch(absolute, {
+          method: 'GET',
+          headers: {
+            'x-stream-token': streamToken,
+            Accept: 'video/*,*/*'
+          }
+        });
+        if (!res.ok) {
+          const msg =
+            res.status === 401 || res.status === 403
+              ? 'Stream expired. Close and open the video again.'
+              : 'Unable to load video';
+          throw new Error(msg);
+        }
+
+        const blob = await res.blob();
+        if (cancelled) return;
+
+        const el = videoRef.current;
+        if (!el) return;
+
+        // Blob registry me URL register → element load kare → turant revoke.
+        // Is page ka player chalega; dusri tab me wahi URL dead ho jayegi.
+        objectUrl = URL.createObjectURL(blob);
+        el.removeAttribute('src');
+        try {
+          el.srcObject = null;
+        } catch {
+          /* ignore */
+        }
+        el.src = objectUrl;
+
+        const onLoaded = () => {
+          revokeNow();
+        };
+        el.addEventListener('loadeddata', onLoaded, { once: true });
+        // Safety: agar event miss ho jaye
+        revokeTimer = window.setTimeout(revokeNow, 1500);
+
+        setReady(true);
+      } catch (err) {
+        revokeNow();
+        if (!cancelled) setError(err.message || 'Unable to load video');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+      revokeNow();
+      clearVideo(videoRef.current);
+    };
+  }, [streamPath, streamToken]);
+
   return (
     <div
       className="relative rounded-xl overflow-hidden bg-slate-900 select-none"
@@ -65,20 +182,30 @@ const ProtectedVideo = ({ streamUrl, title }) => {
           Screen capture is not allowed
         </div>
       )}
+      {loading && (
+        <div className="absolute inset-0 z-[5] flex items-center justify-center text-slate-300 text-sm bg-slate-900">
+          Securely loading video...
+        </div>
+      )}
+      {error && !loading && (
+        <div className="aspect-video flex items-center justify-center text-rose-300 text-sm px-4 text-center">
+          {error}
+        </div>
+      )}
       <video
         ref={videoRef}
-        src={streamUrl}
         controls
         controlsList="nodownload noremoteplayback noplaybackrate"
         disablePictureInPicture
         playsInline
-        className="w-full max-h-[60vh]"
+        className={`w-full max-h-[60vh] ${ready && !error ? '' : 'hidden'}`}
         title={title}
+        onContextMenu={(e) => e.preventDefault()}
       >
         Your browser does not support video playback.
       </video>
       <p className="text-[11px] text-slate-400 px-3 py-2 bg-slate-950">
-        Download disabled · Play count limited by admin · Full screen-record block is not possible in browsers
+        Protected player · No shareable link in page · Open only from this app
       </p>
     </div>
   );
@@ -142,11 +269,11 @@ const RecordingsPage = () => {
     try {
       const res = await postRequest('/user/recordings/watch', { recordingId });
       const rec = res.data.recording;
-      const token = getUserToken();
       let playbackUrl = rec.playbackUrl || '';
 
-      if (rec.isStream && rec.streamPath) {
-        playbackUrl = `${API_BASE.replace(/\/api$/, '')}${rec.streamPath}?usertoken=${encodeURIComponent(token || '')}`;
+      if (rec.isStream) {
+        // Stream uses short-lived token + blob player — do not attach login token to URL
+        playbackUrl = '';
       } else if (playbackUrl && !playbackUrl.startsWith('http')) {
         playbackUrl = `${IMAGE_BASE}${playbackUrl}`;
       }
@@ -341,8 +468,26 @@ const RecordingsPage = () => {
                   title={playback.sessionTitle}
                 />
               </div>
+            ) : playback.isStream ? (
+              <ProtectedVideo
+                streamPath={playback.streamPath}
+                streamToken={playback.streamToken}
+                title={playback.sessionTitle}
+              />
             ) : (
-              <ProtectedVideo streamUrl={playback.playbackUrl} title={playback.sessionTitle} />
+              <div className="rounded-xl overflow-hidden bg-slate-900">
+                <video
+                  src={playback.playbackUrl}
+                  controls
+                  controlsList="nodownload noremoteplayback noplaybackrate"
+                  disablePictureInPicture
+                  playsInline
+                  className="w-full max-h-[60vh]"
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  Your browser does not support video playback.
+                </video>
+              </div>
             )}
           </div>
         )}
