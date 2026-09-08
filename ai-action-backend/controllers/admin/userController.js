@@ -2,7 +2,7 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { User, Attendance, Meeting, MeetingReview, Recording, VideoWatchLog, VideoPlayRequest, Complaint, Notification, Workshop, Bonus, Certificate } from '../../models/index.js';
+import { User, Attendance, Meeting, MeetingReview, Recording, VideoWatchLog, VideoPlayRequest, Complaint, Notification, Workshop, Bonus, Certificate, Invoice } from '../../models/index.js';
 import { hashPassword } from '../../utils/password.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
 import { sendLoginCredentialsEmail } from '../../utils/emailService.js';
@@ -205,6 +205,7 @@ export const deleteUser = async (req, res) => {
       workshopsUpdated,
       bonusesUpdated,
       certificatesDeleted,
+      invoicesDeleted,
       watchLogsDeleted,
       playRequestsDeleted,
       complaintsDeleted,
@@ -220,6 +221,7 @@ export const deleteUser = async (req, res) => {
       Workshop.updateMany({ assignedUsers: userId }, { $pull: { assignedUsers: userId } }),
       Bonus.updateMany({ assignedUsers: userId }, { $pull: { assignedUsers: userId } }),
       Certificate.updateMany({ userId, isDeleted: false }, { $set: { isDeleted: true } }),
+      Invoice.updateMany({ userId, isDeleted: false }, { $set: { isDeleted: true } }),
       VideoWatchLog.deleteMany({ userId }),
       VideoPlayRequest.deleteMany({ userId }),
       Complaint.deleteMany({ userId }),
@@ -235,6 +237,7 @@ export const deleteUser = async (req, res) => {
         workshops: workshopsUpdated.modifiedCount || 0,
         bonuses: bonusesUpdated.modifiedCount || 0,
         certificates: certificatesDeleted.modifiedCount || 0,
+        invoices: invoicesDeleted.modifiedCount || 0,
         watchLogs: watchLogsDeleted.deletedCount || 0,
         playRequests: playRequestsDeleted.deletedCount || 0,
         complaints: complaintsDeleted.deletedCount || 0,

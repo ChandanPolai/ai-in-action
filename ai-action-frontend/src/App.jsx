@@ -13,6 +13,7 @@ import RecordingsPage from './pages/Recordings';
 import CoursesPage from './pages/Courses';
 import BonusPage from './pages/Bonus';
 import CertificatesPage from './pages/Certificates';
+import InvoicesPage from './pages/Invoices';
 import ComplaintsPage from './pages/Complaints';
 import ProfilePage from './pages/Profile';
 import Layout from './components/layout/Layout';
@@ -58,6 +59,8 @@ const DashboardWrapper = () => {
         return <BonusPage />;
       case 'certificates':
         return <CertificatesPage />;
+      case 'invoices':
+        return <InvoicesPage />;
       case 'feedback':
         return <ComplaintsPage />;
       case 'profile':

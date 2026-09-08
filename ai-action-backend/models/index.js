@@ -13,6 +13,7 @@ import MeetingReview from './MeetingReview.js';
 import Workshop from './Workshop.js';
 import Bonus from './Bonus.js';
 import Certificate from './Certificate.js';
+import Invoice from './Invoice.js';
 
 export {
   Admin,
@@ -29,7 +30,8 @@ export {
   MeetingReview,
   Workshop,
   Bonus,
-  Certificate
+  Certificate,
+  Invoice
 };
 
 export default {
@@ -47,5 +49,6 @@ export default {
   MeetingReview,
   Workshop,
   Bonus,
-  Certificate
+  Certificate,
+  Invoice
 };

@@ -90,102 +90,13 @@ mongodb+srv://chandan:G90fm7AzH42ZClsN@cluster0.uyhpfob.mongodb.net/ai-in-action
 
 
 *  Billing / GST Invoice Module -
+Add a Bill Generation Module.
 
-*  Bonus Module - admin panel per henaa ek option abnado bonous karke ok jsime admin kuch cerate akrega ttile dection  rs dena he to iameg kuch bhi fileabrtesdena h to createakrke rkagea mutple userskoassgin akrega jsisie usse uske panel perdhikega simple saabhikeliye itnakardo ok please 
+The system should support GST bill/invoice generation.
 
-*  Certificate Module -  
-ek section banao smamjagayenaa ab hena amdin cretadfcte genatre karke sve kare har srs ka and usko bhepayesmmajagenaa simple .
-https://warm-vans-switch.loca.lt/Endpoint: POST /api/v1/generate
-Headers: Content-Type: application/json
- Input Request (JSON):
-json
-{
-  "recipient_name": "Rahul Sharma",
-  "recipient_email": "rahul@example.com",
-  "course_title": "AI IN ACTION",
-  "issue_date": "2026-09-08",
-  "template_id": "ai_in_action",
-  "signatory1_name": "Gouri Shankar",
-  "signatory2_name": "Arpit Shah"
-}Output Response (JSON):
-json
-{
-  "status": "success",
-  "cert_id": "CERT-2026-A1B2C3D4",
-  "recipient_name": "Rahul Sharma",
-  "course_title": "AI IN ACTION",
-  "issue_date": "2026-09-08",
-  "verify_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "pdf_url": "/download/CERT-2026-A1B2C3D4.pdf",
-  "svg_url": "/download/CERT-2026-A1B2C3D4.svg",
-  "full_pdf_url": "http://localhost:8000/download/CERT-2026-A1B2C3D4.pdf"
-}Endpoint: POST /api/v1/generate
-Headers: Content-Type: application/json
-Input Request (JSON):
-json
-{
-  "recipient_name": "Rahul Sharma",
-  "recipient_email": "rahul@example.com",
-  "course_title": "AI IN ACTION",
-  "issue_date": "2026-09-08",
-  "template_id": "ai_in_action",
-  "signatory1_name": "Gouri Shankar",
-  "signatory2_name": "Arpit Shah"
-}:outbox_tray: Output Response (JSON):
-json
-{
-  "status": "success",
-  "cert_id": "CERT-2026-A1B2C3D4",
-  "recipient_name": "Rahul Sharma",
-  "course_title": "AI IN ACTION",
-  "issue_date": "2026-09-08",
-  "verify_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "pdf_url": "/download/CERT-2026-A1B2C3D4.pdf",
-  "svg_url": "/download/CERT-2026-A1B2C3D4.svg",
-  "full_pdf_url": "http://localhost:8000/download/CERT-2026-A1B2C3D4.pdf"
-}Mihir  [12:25 PM]
-Batch Certificate Public Generation API
-Endpoint: POST /api/v1/batch_generate (Alias: POST /api/certificates/generate_to_folder)
-Headers: Content-Type: application/json
-Input Request (JSON):
-json
-{
-  "template_id": "ai_in_action",
-  "items": [
-    {
-      "recipient_name": "Sneha Patel",
-      "recipient_email": "sneha@example.com",
-      "course_title": "AI IN ACTION"
-    },
-    {
-      "recipient_name": "Ananya Roy",
-      "recipient_email": "ananya@example.com",
-      "course_title": "AI IN ACTION"
-    }
-  ]
-}Output Response (JSON):
-json
-{
-  "status": "success",
-  "count": 2,
-  "certificates": [
-    {
-      "cert_id": "CERT-2026-B1C2",
-      "recipient_name": "Sneha Patel",
-      "pdf_url": "/download/CERT-2026-B1C2.pdf"
-    },
-    {
-      "cert_id": "CERT-2026-D3E4",
-      "recipient_name": "Ananya Roy",
-      "pdf_url": "/download/CERT-2026-D3E4.pdf"
-    }
-  ]
-}[12:25 PM]https://certs-auto-app.loca.lt
-Mihir  [3:01 PM]
-https://warm-vans-switch.loca.lt/
+Admin should be able to generate GST-compliant bills/invoices for participants as required.
 
-
-
+Generated bills should be linked to the relevant participant/workshop/transaction where applicable.
 
 *  Video Playback Rules [todo]
 

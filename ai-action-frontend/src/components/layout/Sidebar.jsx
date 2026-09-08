@@ -10,6 +10,7 @@ import {
   Star,
   Gift,
   Award,
+  FileText,
   User,
   ChevronRight,
   ChevronLeft,
@@ -26,6 +27,7 @@ export const userNavItems = [
   { id: 'courses', label: 'Courses', icon: BookOpen },
   { id: 'bonus', label: 'Bonus', icon: Gift },
   { id: 'certificates', label: 'Certificates', icon: Award },
+  { id: 'invoices', label: 'Invoices', icon: FileText },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareWarning },
   { id: 'profile', label: 'My Profile', icon: User }
 ];

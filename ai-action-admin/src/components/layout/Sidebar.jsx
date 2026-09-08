@@ -14,6 +14,7 @@ import {
   Settings,
   Gift,
   Award,
+  FileText,
   ChevronRight,
   ChevronLeft,
   X,
@@ -32,6 +33,7 @@ export const adminNavItems = [
   { id: 'courses', label: 'Courses', icon: BookOpen },
   { id: 'bonus', label: 'Bonus', icon: Gift },
   { id: 'certificates', label: 'Certificates', icon: Award },
+  { id: 'invoices', label: 'Invoices', icon: FileText },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareWarning },
   { id: 'settings', label: 'Settings', icon: Settings }
 ];
