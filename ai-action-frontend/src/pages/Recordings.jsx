@@ -21,20 +21,41 @@ const toEmbedSrc = (url = '') => {
     if (id) src = `https://www.youtube.com/embed/${id}`;
   }
   const sep = src.includes('?') ? '&' : '?';
-  return `${src}${sep}modestbranding=1&rel=0&controls=1`;
+  return `${src}${sep}modestbranding=1&rel=0&controls=1&enablejsapi=1`;
+};
+
+const formatResume = (sec = 0) => {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
 };
 
 /**
- * Secure player: fetch with stream token, then revoke blob URL ASAP after the element loads it.
- * HTML me blob: string dikh sakti hai, lekin revoke ke baad new tab me paste = fail.
- * (Browser Blob/srcObject bhi quietly blob: banata hai — isliye revoke zaroori hai.)
+ * Secure player: auth-fetch video → blob URL while this player is open.
+ * Revoke only on close (early revoke breaks seek/buffer → ERR_FILE_NOT_FOUND).
+ * After close, pasted blob: links fail. While open, same-browser paste may still work.
  */
-const ProtectedVideo = ({ streamPath, streamToken, title }) => {
+const ProtectedVideo = ({
+  streamPath,
+  streamToken,
+  title,
+  startAt = 0,
+  onProgress,
+  onComplete
+}) => {
   const videoRef = useRef(null);
   const [blocked, setBlocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+  const lastProgressRef = useRef(0);
+  const completedRef = useRef(false);
+  const onProgressRef = useRef(onProgress);
+  const onCompleteRef = useRef(onComplete);
+  const startAtRef = useRef(startAt);
+  onProgressRef.current = onProgress;
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const onKey = (e) => {
@@ -64,16 +85,11 @@ const ProtectedVideo = ({ streamPath, streamToken, title }) => {
   useEffect(() => {
     let cancelled = false;
     let objectUrl = '';
-    let revokeTimer = 0;
 
     const revokeNow = () => {
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
         objectUrl = '';
-      }
-      if (revokeTimer) {
-        window.clearTimeout(revokeTimer);
-        revokeTimer = 0;
       }
     };
 
@@ -102,6 +118,9 @@ const ProtectedVideo = ({ streamPath, streamToken, title }) => {
       setLoading(true);
       setError('');
       setReady(false);
+      completedRef.current = false;
+      lastProgressRef.current = 0;
+      startAtRef.current = startAt;
       revokeNow();
       clearVideo(videoRef.current);
 
@@ -135,8 +154,6 @@ const ProtectedVideo = ({ streamPath, streamToken, title }) => {
         const el = videoRef.current;
         if (!el) return;
 
-        // Blob registry me URL register → element load kare → turant revoke.
-        // Is page ka player chalega; dusri tab me wahi URL dead ho jayegi.
         objectUrl = URL.createObjectURL(blob);
         el.removeAttribute('src');
         try {
@@ -147,11 +164,16 @@ const ProtectedVideo = ({ streamPath, streamToken, title }) => {
         el.src = objectUrl;
 
         const onLoaded = () => {
-          revokeNow();
+          const resumeAt = Math.max(0, Number(startAtRef.current) || 0);
+          if (resumeAt > 0 && Number.isFinite(el.duration) && resumeAt < el.duration - 2) {
+            try {
+              el.currentTime = resumeAt;
+            } catch {
+              /* ignore */
+            }
+          }
         };
         el.addEventListener('loadeddata', onLoaded, { once: true });
-        // Safety: agar event miss ho jaye
-        revokeTimer = window.setTimeout(revokeNow, 1500);
 
         setReady(true);
       } catch (err) {
@@ -166,10 +188,36 @@ const ProtectedVideo = ({ streamPath, streamToken, title }) => {
 
     return () => {
       cancelled = true;
-      revokeNow();
+      const el = videoRef.current;
+      if (el && !completedRef.current && onProgressRef.current) {
+        onProgressRef.current(el.currentTime || 0);
+      }
       clearVideo(videoRef.current);
+      revokeNow();
     };
   }, [streamPath, streamToken]);
+
+  const handleTimeUpdate = () => {
+    const el = videoRef.current;
+    if (!el || completedRef.current || !onProgressRef.current) return;
+    const t = el.currentTime || 0;
+    if (t - lastProgressRef.current >= 10) {
+      lastProgressRef.current = t;
+      onProgressRef.current(t);
+    }
+  };
+
+  const handlePause = () => {
+    const el = videoRef.current;
+    if (!el || completedRef.current || !onProgressRef.current) return;
+    onProgressRef.current(el.currentTime || 0);
+  };
+
+  const handleEnded = () => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    if (onCompleteRef.current) onCompleteRef.current();
+  };
 
   return (
     <div
@@ -201,11 +249,14 @@ const ProtectedVideo = ({ streamPath, streamToken, title }) => {
         className={`w-full max-h-[60vh] ${ready && !error ? '' : 'hidden'}`}
         title={title}
         onContextMenu={(e) => e.preventDefault()}
+        onTimeUpdate={handleTimeUpdate}
+        onPause={handlePause}
+        onEnded={handleEnded}
       >
         Your browser does not support video playback.
       </video>
       <p className="text-[11px] text-slate-400 px-3 py-2 bg-slate-950">
-        Protected player · No shareable link in page · Open only from this app
+        Protected player · Pause/close does not use a play · Count only on full finish
       </p>
     </div>
   );
@@ -222,6 +273,8 @@ const RecordingsPage = () => {
   const [requestOpen, setRequestOpen] = useState(null);
   const [requestReason, setRequestReason] = useState('');
   const [requesting, setRequesting] = useState(false);
+  const completedLockRef = useRef(false);
+  const lastPosRef = useRef(0);
 
   const loadWorkshops = useCallback(async () => {
     try {
@@ -272,12 +325,13 @@ const RecordingsPage = () => {
       let playbackUrl = rec.playbackUrl || '';
 
       if (rec.isStream) {
-        // Stream uses short-lived token + blob player — do not attach login token to URL
         playbackUrl = '';
       } else if (playbackUrl && !playbackUrl.startsWith('http')) {
         playbackUrl = `${IMAGE_BASE}${playbackUrl}`;
       }
 
+      completedLockRef.current = false;
+      lastPosRef.current = Number(rec.lastPositionSec || 0);
       setPlayback({ ...rec, playbackUrl });
       if (selectedWorkshop) loadVideos(selectedWorkshop);
     } catch (err) {
@@ -295,6 +349,58 @@ const RecordingsPage = () => {
       setWatching(null);
     }
   };
+
+  const saveProgress = useCallback(async (recordingId, positionSec) => {
+    if (!recordingId) return;
+    lastPosRef.current = positionSec;
+    try {
+      await postRequest('/user/recordings/progress', {
+        recordingId,
+        positionSec: Math.floor(positionSec || 0)
+      });
+    } catch {
+      /* ignore progress errors */
+    }
+  }, []);
+
+  const markComplete = useCallback(
+    async (recordingId) => {
+      if (!recordingId || completedLockRef.current) return;
+      completedLockRef.current = true;
+      try {
+        const res = await postRequest('/user/recordings/complete', { recordingId });
+        if (res.data?.counted) {
+          toast.success('Video completed — play counted');
+        }
+        setPlayback((prev) =>
+          prev
+            ? {
+                ...prev,
+                playCount: res.data?.playCount ?? prev.playCount,
+                remainingPlays: res.data?.remainingPlays ?? prev.remainingPlays,
+                inProgress: false,
+                lastPositionSec: 0
+              }
+            : prev
+        );
+        if (selectedWorkshop) loadVideos(selectedWorkshop);
+      } catch (err) {
+        completedLockRef.current = false;
+        toast.error(err.message || 'Could not mark complete');
+      }
+    },
+    [selectedWorkshop, loadVideos]
+  );
+
+  const closePlayback = useCallback(async () => {
+    const id = playback?.id;
+    const pos = lastPosRef.current;
+    setPlayback(null);
+    if (id && !completedLockRef.current && pos > 0) {
+      await saveProgress(id, pos);
+    }
+    if (selectedWorkshop) loadVideos(selectedWorkshop);
+  }, [playback?.id, saveProgress, selectedWorkshop, loadVideos]);
 
   const submitRequest = async (e) => {
     e.preventDefault();
@@ -327,7 +433,7 @@ const RecordingsPage = () => {
       <div>
         <h2 className="text-2xl font-extrabold text-slate-900">Session Recordings</h2>
         <p className="text-sm text-slate-500">
-          Open a workshop to watch its videos · Download not allowed · Ask admin for more plays if needed
+          Open a workshop to watch its videos · Play counts only when you finish · Pause/close saves progress
         </p>
       </div>
 
@@ -404,8 +510,11 @@ const RecordingsPage = () => {
                         {r.description || 'Session recording'}
                       </p>
                       <p className="text-xs text-slate-500 mb-3">
-                        Plays used: {r.playCount}/{r.playCount + r.remainingPlays} · Remaining:{' '}
+                        Completed plays: {r.playCount}/{r.playCount + r.remainingPlays} · Remaining:{' '}
                         {r.remainingPlays}
+                        {r.inProgress && r.lastPositionSec > 0
+                          ? ` · Resume at ${formatResume(r.lastPositionSec)}`
+                          : ''}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {r.canPlay ? (
@@ -415,7 +524,11 @@ const RecordingsPage = () => {
                             disabled={watching === r.id}
                             onClick={() => watch(r.id)}
                           >
-                            {watching === r.id ? 'Loading...' : 'Watch'}
+                            {watching === r.id
+                              ? 'Loading...'
+                              : r.inProgress
+                                ? 'Continue'
+                                : 'Watch'}
                           </Button>
                         ) : (
                           <>
@@ -448,7 +561,7 @@ const RecordingsPage = () => {
 
       <Drawer
         isOpen={!!playback}
-        onClose={() => setPlayback(null)}
+        onClose={closePlayback}
         title={playback?.sessionTitle || 'Watch'}
         size="xl"
       >
@@ -456,27 +569,47 @@ const RecordingsPage = () => {
           <div className="space-y-3" onContextMenu={(e) => e.preventDefault()}>
             <p className="text-sm text-slate-500">{playback.description}</p>
             <p className="text-xs font-semibold text-brand-700">
-              Play {playback.playCount} of {playback.maxAllowed} · {playback.remainingPlays} remaining
+              Completed {playback.playCount} of {playback.maxAllowed} · {playback.remainingPlays}{' '}
+              remaining
+              {playback.inProgress && playback.lastPositionSec > 0
+                ? ` · Resuming ${formatResume(playback.lastPositionSec)}`
+                : ''}
             </p>
             {isEmbedUrl(playback.playbackUrl) && !playback.isStream ? (
-              <div className="aspect-video rounded-xl overflow-hidden bg-slate-900">
-                <iframe
-                  src={toEmbedSrc(playback.playbackUrl)}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={playback.sessionTitle}
-                />
+              <div className="space-y-3">
+                <div className="aspect-video rounded-xl overflow-hidden bg-slate-900">
+                  <iframe
+                    src={toEmbedSrc(playback.playbackUrl)}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={playback.sessionTitle}
+                  />
+                </div>
+                <Button
+                  fullWidth
+                  disabled={completedLockRef.current}
+                  onClick={() => markComplete(playback.id)}
+                >
+                  Mark as completed (counts as 1 play)
+                </Button>
               </div>
             ) : playback.isStream ? (
               <ProtectedVideo
                 streamPath={playback.streamPath}
                 streamToken={playback.streamToken}
                 title={playback.sessionTitle}
+                startAt={playback.lastPositionSec || 0}
+                onProgress={(t) => {
+                  lastPosRef.current = t;
+                  saveProgress(playback.id, t);
+                }}
+                onComplete={() => markComplete(playback.id)}
               />
             ) : (
               <div className="rounded-xl overflow-hidden bg-slate-900">
                 <video
+                  key={playback.id}
                   src={playback.playbackUrl}
                   controls
                   controlsList="nodownload noremoteplayback noplaybackrate"
@@ -484,6 +617,23 @@ const RecordingsPage = () => {
                   playsInline
                   className="w-full max-h-[60vh]"
                   onContextMenu={(e) => e.preventDefault()}
+                  onLoadedMetadata={(e) => {
+                    const resumeAt = Number(playback.lastPositionSec || 0);
+                    if (resumeAt > 0 && resumeAt < (e.currentTarget.duration || 0) - 2) {
+                      e.currentTarget.currentTime = resumeAt;
+                    }
+                  }}
+                  onTimeUpdate={(e) => {
+                    const t = e.currentTarget.currentTime || 0;
+                    if (t - lastPosRef.current >= 10) {
+                      lastPosRef.current = t;
+                      saveProgress(playback.id, t);
+                    } else {
+                      lastPosRef.current = t;
+                    }
+                  }}
+                  onPause={(e) => saveProgress(playback.id, e.currentTarget.currentTime || 0)}
+                  onEnded={() => markComplete(playback.id)}
                 >
                   Your browser does not support video playback.
                 </video>

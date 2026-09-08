@@ -122,7 +122,9 @@ export const listMyRecordings = async (req, res) => {
         const log = logMap.get(r._id.toString());
         const maxAllowed = getMaxAllowed(r, log);
         const playCount = log?.playCount || 0;
+        const inProgress = Boolean(log?.inProgress);
         const remaining = Math.max(0, maxAllowed - playCount);
+        const canPlay = remaining > 0 || inProgress;
         const workshopTitle =
           (r.workshopId && r.workshopId.title) ||
           workshopTitleMap.get((r.workshopId?._id || r.workshopId)?.toString()) ||
@@ -140,7 +142,9 @@ export const listMyRecordings = async (req, res) => {
           maxPlayCount: r.maxPlayCount || 1,
           playCount,
           remainingPlays: remaining,
-          canPlay: remaining > 0,
+          canPlay,
+          inProgress,
+          lastPositionSec: Number(log?.lastPositionSec || 0),
           hasPendingRequest: pendingSet.has(r._id.toString())
         };
         const key = `Day ${r.dayNumber}`;
@@ -161,7 +165,7 @@ export const listMyRecordings = async (req, res) => {
   }
 };
 
-// @desc    Start watch session (counts as 1 play). Enforces play limit.
+// @desc    Open / resume watch (does NOT count a play until complete)
 // @route   POST /api/user/recordings/watch
 export const watchRecording = async (req, res) => {
   try {
@@ -190,8 +194,10 @@ export const watchRecording = async (req, res) => {
     const log = await getOrCreateWatchLog(recordingId, req.user._id);
     const maxAllowed = getMaxAllowed(recording, log);
     const playCount = log.playCount || 0;
+    const inProgress = Boolean(log.inProgress);
 
-    if (playCount >= maxAllowed) {
+    // Limit only blocks a *new* watch after all completions are used up
+    if (!inProgress && playCount >= maxAllowed) {
       const pending = await VideoPlayRequest.findOne({
         recordingId,
         userId: req.user._id,
@@ -211,9 +217,11 @@ export const watchRecording = async (req, res) => {
       );
     }
 
-    log.playCount = playCount + 1;
+    if (!log.inProgress) {
+      log.inProgress = true;
+      log.lastPositionSec = 0;
+    }
     log.lastWatchedAt = new Date();
-    log.watchHistory.push({ watchedAt: new Date() });
     await log.save();
 
     const remaining = Math.max(0, maxAllowed - log.playCount);
@@ -232,7 +240,6 @@ export const watchRecording = async (req, res) => {
         userId: req.user._id,
         recordingId: recording._id
       });
-      // Do not put a usable absolute stream URL in the response body
       playbackUrl = '';
       try {
         const relative = String(recording.videoFile).replace(/^\//, '');
@@ -263,8 +270,92 @@ export const watchRecording = async (req, res) => {
         isExternal: isExternalUrl(playbackUrl),
         playCount: log.playCount,
         maxAllowed,
-        remainingPlays: remaining
+        remainingPlays: remaining,
+        inProgress: true,
+        lastPositionSec: Number(log.lastPositionSec || 0)
       }
+    });
+  } catch (error) {
+    return sendError(res, error.message, null, 500);
+  }
+};
+
+// @desc    Save resume position (pause / close) — does not consume a play
+// @route   POST /api/user/recordings/progress
+export const saveWatchProgress = async (req, res) => {
+  try {
+    const { recordingId, positionSec = 0 } = req.body || {};
+    if (!recordingId) return sendError(res, 'recordingId is required', null, 400);
+
+    const log = await VideoWatchLog.findOne({
+      recordingId,
+      userId: req.user._id
+    });
+    if (!log || !log.inProgress) {
+      return sendSuccess(res, 'No active watch session', { saved: false });
+    }
+
+    const pos = Math.max(0, Number(positionSec) || 0);
+    log.lastPositionSec = pos;
+    log.lastWatchedAt = new Date();
+    await log.save();
+
+    return sendSuccess(res, 'Progress saved', {
+      saved: true,
+      lastPositionSec: log.lastPositionSec
+    });
+  } catch (error) {
+    return sendError(res, error.message, null, 500);
+  }
+};
+
+// @desc    Mark video completed — increments playCount once
+// @route   POST /api/user/recordings/complete
+export const completeWatch = async (req, res) => {
+  try {
+    const { recordingId } = req.body || {};
+    if (!recordingId) return sendError(res, 'recordingId is required', null, 400);
+
+    const recording = await Recording.findOne({
+      _id: recordingId,
+      isDeleted: false,
+      isActive: { $ne: false }
+    });
+    if (!recording) return sendError(res, 'Recording not found', null, 404);
+
+    await ensureWorkshopAccessPopulated(recording);
+    if (!canUserWatchRecording(recording, req.user._id)) {
+      return sendError(res, 'Access denied', null, 403);
+    }
+
+    const log = await getOrCreateWatchLog(recordingId, req.user._id);
+    const maxAllowed = getMaxAllowed(recording, log);
+
+    if (!log.inProgress) {
+      return sendSuccess(res, 'Already counted or no active session', {
+        counted: false,
+        playCount: log.playCount || 0,
+        maxAllowed,
+        remainingPlays: Math.max(0, maxAllowed - (log.playCount || 0)),
+        inProgress: false
+      });
+    }
+
+    log.playCount = (log.playCount || 0) + 1;
+    log.inProgress = false;
+    log.lastPositionSec = 0;
+    log.lastWatchedAt = new Date();
+    log.watchHistory.push({ watchedAt: new Date() });
+    await log.save();
+
+    const remaining = Math.max(0, maxAllowed - log.playCount);
+
+    return sendSuccess(res, 'Play counted — video completed', {
+      counted: true,
+      playCount: log.playCount,
+      maxAllowed,
+      remainingPlays: remaining,
+      inProgress: false
     });
   } catch (error) {
     return sendError(res, error.message, null, 500);
@@ -294,8 +385,11 @@ export const streamRecording = async (req, res) => {
     }
 
     const log = await VideoWatchLog.findOne({ recordingId, userId: req.user._id });
-    if (!log || log.playCount < 1) {
-      return res.status(403).json({ status: false, message: 'Start watch session first' });
+    if (!log || !log.inProgress) {
+      return res.status(403).json({
+        status: false,
+        message: 'Start watch session first'
+      });
     }
 
     const relative = recording.videoFile.replace(/^\//, '');
@@ -437,7 +531,10 @@ export const myPlayRequests = async (req, res) => {
 
 export default {
   listMyRecordings,
+  listMyWorkshops,
   watchRecording,
+  saveWatchProgress,
+  completeWatch,
   streamRecording,
   requestMorePlays,
   myPlayRequests

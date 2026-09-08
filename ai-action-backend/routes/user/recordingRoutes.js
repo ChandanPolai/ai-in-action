@@ -3,6 +3,8 @@ import {
   listMyWorkshops,
   listMyRecordings,
   watchRecording,
+  saveWatchProgress,
+  completeWatch,
   streamRecording,
   requestMorePlays,
   myPlayRequests
@@ -20,6 +22,8 @@ router.use(verifyUserToken);
 router.post('/workshops', listMyWorkshops);
 router.post('/list', listMyRecordings);
 router.post('/watch', watchRecording);
+router.post('/progress', saveWatchProgress);
+router.post('/complete', completeWatch);
 router.post('/request-play', requestMorePlays);
 router.post('/my-requests', myPlayRequests);
 

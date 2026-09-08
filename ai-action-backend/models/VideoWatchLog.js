@@ -12,6 +12,7 @@ const videoWatchLogSchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
+    // Completed full watches only (not open/pause)
     playCount: {
       type: Number,
       default: 0
@@ -20,6 +21,16 @@ const videoWatchLogSchema = new mongoose.Schema(
     extraPlaysAllowed: {
       type: Number,
       default: 0
+    },
+    // True while user has an unfinished watch they can resume
+    inProgress: {
+      type: Boolean,
+      default: false
+    },
+    lastPositionSec: {
+      type: Number,
+      default: 0,
+      min: 0
     },
     lastWatchedAt: {
       type: Date,
