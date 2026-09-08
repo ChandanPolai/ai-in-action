@@ -12,6 +12,7 @@ import WorkshopsPage from './pages/Workshops';
 import PlayRequestsPage from './pages/PlayRequests';
 import CoursesPage from './pages/Courses';
 import BonusPage from './pages/Bonus';
+import CertificatesPage from './pages/Certificates';
 import ComplaintsPage from './pages/Complaints';
 import ReviewsPage from './pages/Reviews';
 import SettingsPage from './pages/Settings';
@@ -62,6 +63,8 @@ const DashboardWrapper = () => {
         return <CoursesPage />;
       case 'bonus':
         return <BonusPage />;
+      case 'certificates':
+        return <CertificatesPage />;
       case 'feedback':
         return <ComplaintsPage />;
       case 'settings':

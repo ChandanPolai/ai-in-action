@@ -13,6 +13,7 @@ import {
   Star,
   Settings,
   Gift,
+  Award,
   ChevronRight,
   ChevronLeft,
   X,
@@ -30,6 +31,7 @@ export const adminNavItems = [
   { id: 'play-requests', label: 'Play Requests', icon: Inbox },
   { id: 'courses', label: 'Courses', icon: BookOpen },
   { id: 'bonus', label: 'Bonus', icon: Gift },
+  { id: 'certificates', label: 'Certificates', icon: Award },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareWarning },
   { id: 'settings', label: 'Settings', icon: Settings }
 ];

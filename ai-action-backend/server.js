@@ -21,6 +21,7 @@ import adminCourseRoutes from './routes/admin/courseRoutes.js';
 import adminComplaintRoutes from './routes/admin/complaintRoutes.js';
 import adminWorkshopRoutes from './routes/admin/workshopRoutes.js';
 import adminBonusRoutes from './routes/admin/bonusRoutes.js';
+import adminCertificateRoutes from './routes/admin/certificateRoutes.js';
 
 import userAuthRoutes from './routes/user/authRoutes.js';
 import userMeetingRoutes from './routes/user/meetingRoutes.js';
@@ -29,6 +30,7 @@ import userRecordingRoutes from './routes/user/recordingRoutes.js';
 import userCourseRoutes from './routes/user/courseRoutes.js';
 import userComplaintRoutes from './routes/user/complaintRoutes.js';
 import userBonusRoutes from './routes/user/bonusRoutes.js';
+import userCertificateRoutes from './routes/user/certificateRoutes.js';
 
 dotenv.config();
 
@@ -89,6 +91,7 @@ app.use('/api/admin/courses', adminCourseRoutes);
 app.use('/api/admin/complaints', adminComplaintRoutes);
 app.use('/api/admin/workshops', adminWorkshopRoutes);
 app.use('/api/admin/bonuses', adminBonusRoutes);
+app.use('/api/admin/certificates', adminCertificateRoutes);
 
 // User APIs
 app.use('/api/user/auth', userAuthRoutes);
@@ -98,6 +101,7 @@ app.use('/api/user/recordings', userRecordingRoutes);
 app.use('/api/user/courses', userCourseRoutes);
 app.use('/api/user/complaints', userComplaintRoutes);
 app.use('/api/user/bonuses', userBonusRoutes);
+app.use('/api/user/certificates', userCertificateRoutes);
 
 const sendSpaIndex = (folderName, missingMsg) => (req, res) => {
   const indexFile = path.join(__dirname, folderName, 'index.html');
@@ -126,6 +130,7 @@ const userSpaPaths = [
   '/courses',
   '/feedback',
   '/bonus',
+  '/certificates',
   '/profile'
 ];
 app.get(userSpaPaths, (req, res) => {

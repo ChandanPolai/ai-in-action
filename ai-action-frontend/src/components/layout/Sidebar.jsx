@@ -9,6 +9,7 @@ import {
   MessageSquareWarning,
   Star,
   Gift,
+  Award,
   User,
   ChevronRight,
   ChevronLeft,
@@ -24,6 +25,7 @@ export const userNavItems = [
   { id: 'recordings', label: 'Recordings', icon: Clapperboard },
   { id: 'courses', label: 'Courses', icon: BookOpen },
   { id: 'bonus', label: 'Bonus', icon: Gift },
+  { id: 'certificates', label: 'Certificates', icon: Award },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareWarning },
   { id: 'profile', label: 'My Profile', icon: User }
 ];

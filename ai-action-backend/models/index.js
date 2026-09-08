@@ -12,6 +12,7 @@ import Complaint from './Complaint.js';
 import MeetingReview from './MeetingReview.js';
 import Workshop from './Workshop.js';
 import Bonus from './Bonus.js';
+import Certificate from './Certificate.js';
 
 export {
   Admin,
@@ -27,7 +28,8 @@ export {
   Complaint,
   MeetingReview,
   Workshop,
-  Bonus
+  Bonus,
+  Certificate
 };
 
 export default {
@@ -44,5 +46,6 @@ export default {
   Complaint,
   MeetingReview,
   Workshop,
-  Bonus
+  Bonus,
+  Certificate
 };
