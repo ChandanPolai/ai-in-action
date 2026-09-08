@@ -1,6 +1,22 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { Recording, User, VideoWatchLog, VideoPlayRequest, AppSettings, Attendance, Meeting, Workshop } from '../../models/index.js';
 import { sendSuccess, sendError } from '../../utils/apiResponse.js';
 import { grantAbsenteesForRecording } from '../../utils/videoAccess.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const isValidHttpUrl = (value) => {
+  if (value === undefined || value === null || String(value).trim() === '') return true;
+  try {
+    const u = new URL(String(value).trim());
+    return (u.protocol === 'http:' || u.protocol === 'https:') && Boolean(u.hostname);
+  } catch {
+    return false;
+  }
+};
 
 const formatRecording = (r, stats = null) => ({
   id: r._id,
@@ -91,6 +107,10 @@ export const createRecording = async (req, res) => {
     }
     if (!sessionTitle) {
       return sendError(res, 'Session title is required', null, 400);
+    }
+
+    if (!isValidHttpUrl(videoUrl)) {
+      return sendError(res, 'Invalid video URL. Use a full http:// or https:// link.', null, 400);
     }
 
     const videoFile = req.file ? `/uploads/recordings/${req.file.filename}` : '';
@@ -232,7 +252,12 @@ export const updateRecording = async (req, res) => {
     if (description !== undefined) recording.description = description;
     if (dayNumber !== undefined) recording.dayNumber = Number(dayNumber);
     if (sessionNumber !== undefined) recording.sessionNumber = Number(sessionNumber);
-    if (videoUrl !== undefined) recording.videoUrl = videoUrl;
+    if (videoUrl !== undefined) {
+      if (!isValidHttpUrl(videoUrl)) {
+        return sendError(res, 'Invalid video URL. Use a full http:// or https:// link.', null, 400);
+      }
+      recording.videoUrl = String(videoUrl || '').trim();
+    }
     if (meetingId !== undefined) recording.meetingId = meetingId || null;
     if (maxPlayCount !== undefined) recording.maxPlayCount = Math.max(1, Number(maxPlayCount) || 1);
     if (isActive !== undefined) {
@@ -522,6 +547,68 @@ export const updateVideoSettings = async (req, res) => {
   }
 };
 
+// @desc    Admin preview stream for uploaded recording (no play limits)
+// @route   GET /api/admin/recordings/stream/:recordingId
+export const streamAdminRecording = async (req, res) => {
+  try {
+    const { recordingId } = req.params;
+    const recording = await Recording.findOne({ _id: recordingId, isDeleted: false });
+    if (!recording) {
+      return res.status(404).json({ status: false, message: 'Recording not found' });
+    }
+
+    if (!recording.videoFile) {
+      return res.status(404).json({ status: false, message: 'No uploaded video file on this recording' });
+    }
+
+    const relative = String(recording.videoFile).replace(/^\//, '');
+    const filePath = path.join(__dirname, '../..', relative);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ status: false, message: 'Video file missing on server' });
+    }
+
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const ext = path.extname(filePath).toLowerCase();
+    const mime =
+      ext === '.webm'
+        ? 'video/webm'
+        : ext === '.ogg'
+          ? 'video/ogg'
+          : ext === '.mov'
+            ? 'video/quicktime'
+            : 'video/mp4';
+
+    const range = req.headers.range;
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+      const file = fs.createReadStream(filePath, { start, end });
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Content-Length': chunkSize
+      });
+      file.pipe(res);
+    } else {
+      res.setHeader('Content-Length', fileSize);
+      fs.createReadStream(filePath).pipe(res);
+    }
+  } catch (error) {
+    if (!res.headersSent) {
+      return res.status(500).json({ status: false, message: error.message });
+    }
+  }
+};
+
 export default {
   createRecording,
   listRecordings,
@@ -536,5 +623,6 @@ export default {
   reviewPlayRequest,
   getVideoSettings,
   updateVideoSettings,
+  streamAdminRecording,
   canUserWatchRecording
 };

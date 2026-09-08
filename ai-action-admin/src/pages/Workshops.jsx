@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Pencil, Trash2, Shield, Upload, Layers } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, Upload, Layers, Search } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   fetchWorkshopsThunk,
@@ -33,7 +33,19 @@ const WorkshopsPage = () => {
   const [accessWorkshop, setAccessWorkshop] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [userSearch, setUserSearch] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const filteredAccessUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return accessMatrix;
+    return accessMatrix.filter(
+      (u) =>
+        (u.username || u.name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        String(u.mobileNumber || '').includes(q)
+    );
+  }, [accessMatrix, userSearch]);
 
   useEffect(() => {
     dispatch(fetchWorkshopsThunk({}));
@@ -58,6 +70,7 @@ const WorkshopsPage = () => {
 
   const openAccess = async (w) => {
     setAccessWorkshop(w);
+    setUserSearch('');
     setAccessOpen(true);
     const result = await dispatch(fetchWorkshopAccessMatrixThunk(w.id));
     if (fetchWorkshopAccessMatrixThunk.fulfilled.match(result)) {
@@ -143,10 +156,23 @@ const WorkshopsPage = () => {
   };
 
   const selectAll = () => {
+    if (userSearch.trim()) {
+      setSelectedUsers((prev) => {
+        const set = new Set(prev.map(String));
+        filteredAccessUsers.forEach((u) => set.add(String(u.id)));
+        return [...set];
+      });
+      return;
+    }
     setSelectedUsers(accessMatrix.map((u) => String(u.id)));
   };
 
   const deselectAll = () => {
+    if (userSearch.trim()) {
+      const remove = new Set(filteredAccessUsers.map((u) => String(u.id)));
+      setSelectedUsers((prev) => prev.filter((id) => !remove.has(String(id))));
+      return;
+    }
     setSelectedUsers([]);
   };
 
@@ -324,12 +350,20 @@ const WorkshopsPage = () => {
         <p className="text-sm text-slate-500 mb-3">
           Selected users can watch all videos inside this workshop. Multi-select or deselect anytime.
         </p>
+        <div className="mb-3">
+          <Input
+            icon={Search}
+            placeholder="Search users by name, email, mobile..."
+            value={userSearch}
+            onChange={(e) => setUserSearch(e.target.value)}
+          />
+        </div>
         <div className="flex gap-2 mb-3">
           <Button variant="ghost" type="button" onClick={selectAll}>
-            Select all
+            {userSearch.trim() ? `Select filtered (${filteredAccessUsers.length})` : 'Select all'}
           </Button>
           <Button variant="ghost" type="button" onClick={deselectAll}>
-            Deselect all
+            {userSearch.trim() ? 'Clear filtered' : 'Deselect all'}
           </Button>
           <span className="ml-auto text-xs text-slate-500 self-center">
             {selectedUsers.length} selected
@@ -337,7 +371,10 @@ const WorkshopsPage = () => {
         </div>
         <div className="max-h-[55vh] overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 mb-4">
           {accessMatrix.length === 0 && <p className="text-xs text-slate-400">No users available</p>}
-          {accessMatrix.map((u) => (
+          {accessMatrix.length > 0 && filteredAccessUsers.length === 0 && (
+            <p className="text-xs text-slate-400">No users found</p>
+          )}
+          {filteredAccessUsers.map((u) => (
             <label key={u.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
               <input
                 type="checkbox"

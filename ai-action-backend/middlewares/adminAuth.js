@@ -4,7 +4,11 @@ import { Admin } from '../models/index.js';
 
 export const verifyAdminToken = async (req, res, next) => {
   try {
-    let token = req.headers['admintoken'] || req.body.adminToken;
+    let token =
+      req.headers['admintoken'] ||
+      req.body?.adminToken ||
+      req.query?.admintoken ||
+      req.query?.token;
 
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];

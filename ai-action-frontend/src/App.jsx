@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Impersonate from './pages/Impersonate';
 import Dashboard from './pages/Dashboard';
 import MeetingsPage from './pages/Meetings';
 import MyReviewsPage from './pages/MyReviews';
@@ -87,6 +88,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/impersonate" element={<Impersonate />} />
         <Route
           path="/*"
           element={

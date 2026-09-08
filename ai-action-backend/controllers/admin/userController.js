@@ -1,6 +1,7 @@
 import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
+import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
 import { User, Attendance, Meeting, MeetingReview, Recording, VideoWatchLog, VideoPlayRequest, Complaint, Notification, Workshop, Bonus, Certificate, Invoice } from '../../models/index.js';
 import { hashPassword } from '../../utils/password.js';
@@ -10,6 +11,7 @@ import { sendLoginCredentialsEmail } from '../../utils/emailService.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const excelDir = path.join(__dirname, '../../uploads/excel');
+const JWT_SECRET = process.env.JWT_SECRET || 'ai_in_action_super_secret_jwt_key_2026';
 
 const generateTempPassword = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
@@ -456,6 +458,44 @@ export const sendCredentialsToAll = async (req, res) => {
   }
 };
 
+// @desc    Admin login-as user (opens user portal with short-lived token)
+// @route   POST /api/admin/users/impersonate
+export const impersonateUser = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return sendError(res, 'userId is required', null, 400);
+
+    const user = await User.findOne({ _id: userId, isDeleted: false });
+    if (!user) return sendError(res, 'User not found', null, 404);
+    if (!user.isActive) {
+      return sendError(res, 'Cannot login as inactive user. Activate them first.', null, 400);
+    }
+
+    const userToken = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        role: 'user',
+        impersonatedBy: req.admin._id
+      },
+      JWT_SECRET,
+      { expiresIn: '2h' }
+    );
+
+    const userAppUrl = (process.env.USER_APP_URL || 'http://localhost:3001').replace(/\/$/, '');
+    const redirectUrl = `${userAppUrl}/impersonate?token=${encodeURIComponent(userToken)}`;
+
+    return sendSuccess(res, 'Opening user portal', {
+      userToken,
+      user: formatUser(user),
+      userAppUrl,
+      redirectUrl
+    });
+  } catch (error) {
+    return sendError(res, error.message, null, 500);
+  }
+};
+
 export default {
   createUser,
   listUsers,
@@ -466,5 +506,6 @@ export default {
   resetUserPassword,
   importUsersPreview,
   importUsers,
-  sendCredentialsToAll
+  sendCredentialsToAll,
+  impersonateUser
 };

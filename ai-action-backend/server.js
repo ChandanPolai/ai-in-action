@@ -126,6 +126,7 @@ const userSpaPaths = [
   '/login',
   '/forgot-password',
   '/reset-password',
+  '/impersonate',
   '/dashboard',
   '/meetings',
   '/reviews',

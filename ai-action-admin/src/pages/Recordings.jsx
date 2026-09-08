@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Pencil, Trash2, Upload, BarChart3 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, BarChart3, Play } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   fetchRecordingsThunk,
@@ -10,12 +10,39 @@ import {
 } from '../store/slices/recordingsSlice';
 import { fetchWorkshopsThunk } from '../store/slices/workshopsSlice';
 import { postRequest } from '../services/apiClient';
+import { getAdminToken } from '../utils/storage';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import Drawer from '../components/ui/Drawer';
+import Modal from '../components/ui/Modal';
 import { formatDate, formatDateTime } from '../utils/formatDate';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+const isEmbedUrl = (url = '') =>
+  /youtube\.com|youtu\.be|vimeo\.com/i.test(url);
+
+const toEmbedSrc = (url = '') => {
+  let src = url.replace('watch?v=', 'embed/');
+  if (src.includes('youtu.be/')) {
+    const id = src.split('youtu.be/')[1]?.split(/[?&]/)[0];
+    if (id) src = `https://www.youtube.com/embed/${id}`;
+  }
+  const sep = src.includes('?') ? '&' : '?';
+  return `${src}${sep}modestbranding=1&rel=0&controls=1`;
+};
+
+const isValidVideoUrl = (value) => {
+  if (!value || !String(value).trim()) return true;
+  try {
+    const u = new URL(String(value).trim());
+    return (u.protocol === 'http:' || u.protocol === 'https:') && Boolean(u.hostname);
+  } catch {
+    return false;
+  }
+};
 
 const emptyForm = {
   workshopId: '',
@@ -34,6 +61,8 @@ const RecordingsPage = () => {
   const { list: workshops } = useSelector((state) => state.workshops);
   const [modalOpen, setModalOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [preview, setPreview] = useState(null);
   const [editing, setEditing] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -91,6 +120,44 @@ const RecordingsPage = () => {
     }
   };
 
+  const openPreview = (r) => {
+    if (!r.videoFile && !r.videoUrl) {
+      toast.error('No video uploaded for this recording');
+      return;
+    }
+
+    if (r.videoFile) {
+      const token = getAdminToken();
+      const streamUrl = `${API_BASE}/admin/recordings/stream/${r.id}?admintoken=${encodeURIComponent(token || '')}`;
+      setPreview({
+        title: r.sessionTitle,
+        description: r.description,
+        type: 'stream',
+        url: streamUrl
+      });
+    } else if (isEmbedUrl(r.videoUrl)) {
+      setPreview({
+        title: r.sessionTitle,
+        description: r.description,
+        type: 'embed',
+        url: toEmbedSrc(r.videoUrl)
+      });
+    } else {
+      setPreview({
+        title: r.sessionTitle,
+        description: r.description,
+        type: 'url',
+        url: r.videoUrl
+      });
+    }
+    setPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreview(null);
+  };
+
   const buildPayload = () => {
     if (form.videoFile) {
       const fd = new FormData();
@@ -124,6 +191,11 @@ const RecordingsPage = () => {
 
     if (!editing && !form.videoUrl && !form.videoFile) {
       toast.error('Please upload a video file or provide a video URL');
+      return;
+    }
+
+    if (form.videoUrl.trim() && !isValidVideoUrl(form.videoUrl)) {
+      toast.error('Invalid video URL. Enter a full http:// or https:// link');
       return;
     }
 
@@ -248,6 +320,13 @@ const RecordingsPage = () => {
               {r.videoUrl ? ' · URL' : ''}
             </p>
             <div className="flex items-center gap-1 border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => openPreview(r)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 hover:bg-brand-100"
+              >
+                <Play className="w-3.5 h-3.5" /> Preview
+              </button>
               <button
                 type="button"
                 onClick={() => openAnalytics(r)}
@@ -379,7 +458,15 @@ const RecordingsPage = () => {
             value={form.videoUrl}
             onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
             placeholder="https://..."
+            error={
+              form.videoUrl.trim() && !isValidVideoUrl(form.videoUrl)
+                ? 'Enter a valid http:// or https:// URL'
+                : ''
+            }
           />
+          <p className="text-xs text-slate-500 -mt-2">
+            Example: https://youtube.com/... or https://example.com/video.mp4
+          </p>
 
           <div className="flex gap-3 pt-4">
             <Button variant="ghost" fullWidth type="button" onClick={() => setModalOpen(false)}>
@@ -461,6 +548,39 @@ const RecordingsPage = () => {
           </div>
         )}
       </Drawer>
+
+      <Modal isOpen={previewOpen} onClose={closePreview} title={preview?.title || 'Preview'} size="xl">
+        {preview && (
+          <div className="space-y-3">
+            {preview.description ? (
+              <p className="text-sm text-slate-500">{preview.description}</p>
+            ) : null}
+            {preview.type === 'embed' ? (
+              <div className="aspect-video rounded-xl overflow-hidden bg-slate-900">
+                <iframe
+                  src={preview.url}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={preview.title}
+                />
+              </div>
+            ) : (
+              <div className="rounded-xl overflow-hidden bg-slate-900">
+                <video
+                  key={preview.url}
+                  src={preview.url}
+                  controls
+                  playsInline
+                  className="w-full max-h-[70vh] bg-black"
+                >
+                  Your browser does not support video playback.
+                </video>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

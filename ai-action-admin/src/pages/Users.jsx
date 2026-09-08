@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Search, Pencil, Trash2, FileSpreadsheet, Mail } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, FileSpreadsheet, Mail, ExternalLink } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   fetchUsersThunk,
@@ -142,6 +142,25 @@ const UsersPage = () => {
       load();
     } catch (err) {
       toast.error(err);
+    }
+  };
+
+  const handleLoginAs = async (user) => {
+    if (!user?.isActive) {
+      toast.error('Activate the user first');
+      return;
+    }
+    try {
+      const res = await postRequest('/admin/users/impersonate', { userId: user.id });
+      const url = res.data?.redirectUrl;
+      if (!url) {
+        toast.error('Could not open user portal');
+        return;
+      }
+      window.open(url, '_blank');
+      toast.success(`Opening ${user.name}'s profile`);
+    } catch (err) {
+      toast.error(err.message || 'Failed to login as user');
     }
   };
 
@@ -386,6 +405,14 @@ const UsersPage = () => {
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleLoginAs(user)}
+                          className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600"
+                          title="Login as user (open profile)"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
                         <button onClick={() => openEdit(user)} className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600" title="Edit">
                           <Pencil className="w-4 h-4" />
                         </button>
