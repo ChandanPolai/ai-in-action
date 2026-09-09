@@ -14,6 +14,13 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Drawer from '../components/ui/Drawer';
 import { imageUrl, postRequest } from '../services/apiClient';
+import {
+  COUNTRY_CODES,
+  digitsOnly,
+  normalizeCountryCode,
+  validateMobileNumber,
+  validateOptionalMobile
+} from '../utils/countryCodes';
 
 const emptyForm = {
   name: '',
@@ -77,17 +84,32 @@ const UsersPage = () => {
     setForm({
       name: user.name,
       email: user.email,
-      mobileNumber: user.mobileNumber,
-      secondaryMobileNumber: user.secondaryMobileNumber || '',
-      countryCode: user.countryCode || '+91',
+      mobileNumber: digitsOnly(user.mobileNumber || ''),
+      secondaryMobileNumber: digitsOnly(user.secondaryMobileNumber || ''),
+      countryCode: normalizeCountryCode(user.countryCode || '+91'),
       password: '',
       sendCredentials: false
     });
     setModalOpen(true);
   };
 
+  const onMobileChange = (field, value) => {
+    const maxLen = form.countryCode === '+91' ? 10 : 15;
+    setForm((prev) => ({
+      ...prev,
+      [field]: digitsOnly(value).slice(0, maxLen)
+    }));
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
+
+    const mobileErr = validateMobileNumber(form.mobileNumber, form.countryCode);
+    const secondaryErr = validateOptionalMobile(form.secondaryMobileNumber, form.countryCode);
+    if (mobileErr || secondaryErr) {
+      toast.error(mobileErr || secondaryErr);
+      return;
+    }
 
     if (form.password && form.password.trim().length > 0 && form.password.trim().length < 6) {
       toast.error('Password must be at least 6 characters');
@@ -96,14 +118,18 @@ const UsersPage = () => {
 
     setSaving(true);
     try {
+      const countryCode = normalizeCountryCode(form.countryCode);
+      const mobileNumber = digitsOnly(form.mobileNumber);
+      const secondaryMobileNumber = digitsOnly(form.secondaryMobileNumber);
+
       if (editing) {
         const payload = {
           userId: editing.id,
           name: form.name,
           email: form.email,
-          mobileNumber: form.mobileNumber,
-          secondaryMobileNumber: form.secondaryMobileNumber,
-          countryCode: form.countryCode
+          mobileNumber,
+          secondaryMobileNumber,
+          countryCode
         };
         if (form.password.trim()) {
           payload.password = form.password.trim();
@@ -111,7 +137,15 @@ const UsersPage = () => {
         await dispatch(updateUserThunk(payload)).unwrap();
         toast.success('User updated');
       } else {
-        await dispatch(createUserThunk({ ...form, sendCredentials: true })).unwrap();
+        await dispatch(
+          createUserThunk({
+            ...form,
+            countryCode,
+            mobileNumber,
+            secondaryMobileNumber,
+            sendCredentials: true
+          })
+        ).unwrap();
         toast.success('User created — login credentials emailed');
       }
       setModalOpen(false);
@@ -433,17 +467,64 @@ const UsersPage = () => {
         <form onSubmit={handleSave} className="space-y-4">
           <Input label="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="Email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <div className="grid grid-cols-3 gap-3">
-            <Input label="Code" value={form.countryCode} onChange={(e) => setForm({ ...form, countryCode: e.target.value })} />
-            <div className="col-span-2">
-              <Input label="Mobile" required value={form.mobileNumber} onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="w-full space-y-1.5 text-left">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                Country code <span className="text-rose-500">*</span>
+              </label>
+              <select
+                className="custom-input"
+                value={form.countryCode}
+                onChange={(e) => {
+                  const countryCode = e.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    countryCode,
+                    mobileNumber:
+                      countryCode === '+91'
+                        ? digitsOnly(prev.mobileNumber).slice(0, 10)
+                        : prev.mobileNumber,
+                    secondaryMobileNumber:
+                      countryCode === '+91'
+                        ? digitsOnly(prev.secondaryMobileNumber).slice(0, 10)
+                        : prev.secondaryMobileNumber
+                  }));
+                }}
+              >
+                {!COUNTRY_CODES.some((c) => c.dial === form.countryCode) && form.countryCode ? (
+                  <option value={form.countryCode}>{form.countryCode}</option>
+                ) : null}
+                {COUNTRY_CODES.map((c) => (
+                  <option key={c.dial + c.label} value={c.dial}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <Input
+                label="Mobile number"
+                required
+                inputMode="numeric"
+                autoComplete="tel-national"
+                placeholder={form.countryCode === '+91' ? '10-digit mobile' : 'Mobile number'}
+                maxLength={form.countryCode === '+91' ? 10 : 15}
+                value={form.mobileNumber}
+                onChange={(e) => onMobileChange('mobileNumber', e.target.value)}
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Full number: {form.countryCode}
+                {form.mobileNumber || 'XXXXXXXXXX'}
+              </p>
             </div>
           </div>
           <Input
             label="Secondary Mobile"
             placeholder="Optional"
+            inputMode="numeric"
+            maxLength={form.countryCode === '+91' ? 10 : 15}
             value={form.secondaryMobileNumber}
-            onChange={(e) => setForm({ ...form, secondaryMobileNumber: e.target.value })}
+            onChange={(e) => onMobileChange('secondaryMobileNumber', e.target.value)}
           />
           <Input
             label="Password"

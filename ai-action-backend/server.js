@@ -8,7 +8,7 @@ import fs from 'fs';
 
 import connectDB from './config/db.js';
 import { sendSuccess } from './utils/apiResponse.js';
-import { apiLimiter, authLimiter } from './middlewares/rateLimiter.js';
+import { apiLimiter } from './middlewares/rateLimiter.js';
 import { runMeetingScheduleJob } from './utils/meetingSchedule.js';
 
 import adminAuthRoutes from './routes/admin/authRoutes.js';
@@ -48,11 +48,6 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiters temporarily disabled
-// app.use('/api/', apiLimiter);
-// app.use('/api/admin/auth/', authLimiter);
-// app.use('/api/user/auth/', authLimiter);
-
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
@@ -82,30 +77,29 @@ const healthHandler = (req, res) => {
 app.post('/api/health', healthHandler);
 app.get('/api/health', healthHandler);
 
-// Admin APIs
-app.use('/api/admin/auth', adminAuthRoutes);
-app.use('/api/admin/users', adminUserRoutes);
-app.use('/api/admin/dashboard', adminDashboardRoutes);
-app.use('/api/admin/meetings', adminMeetingRoutes);
-app.use('/api/admin/attendance', adminAttendanceRoutes);
-app.use('/api/admin/recordings', adminRecordingRoutes);
-app.use('/api/admin/courses', adminCourseRoutes);
-app.use('/api/admin/complaints', adminComplaintRoutes);
-app.use('/api/admin/workshops', adminWorkshopRoutes);
-app.use('/api/admin/bonuses', adminBonusRoutes);
-app.use('/api/admin/certificates', adminCertificateRoutes);
-app.use('/api/admin/invoices', adminInvoiceRoutes);
+// Rate limit on EVERY API (shared counter per IP). Login routes add stricter authLimiter inside route files.
+app.use('/api/admin/auth', apiLimiter, adminAuthRoutes);
+app.use('/api/admin/users', apiLimiter, adminUserRoutes);
+app.use('/api/admin/dashboard', apiLimiter, adminDashboardRoutes);
+app.use('/api/admin/meetings', apiLimiter, adminMeetingRoutes);
+app.use('/api/admin/attendance', apiLimiter, adminAttendanceRoutes);
+app.use('/api/admin/recordings', apiLimiter, adminRecordingRoutes);
+app.use('/api/admin/courses', apiLimiter, adminCourseRoutes);
+app.use('/api/admin/complaints', apiLimiter, adminComplaintRoutes);
+app.use('/api/admin/workshops', apiLimiter, adminWorkshopRoutes);
+app.use('/api/admin/bonuses', apiLimiter, adminBonusRoutes);
+app.use('/api/admin/certificates', apiLimiter, adminCertificateRoutes);
+app.use('/api/admin/invoices', apiLimiter, adminInvoiceRoutes);
 
-// User APIs
-app.use('/api/user/auth', userAuthRoutes);
-app.use('/api/user/meetings', userMeetingRoutes);
-app.use('/api/user/attendance', userAttendanceRoutes);
-app.use('/api/user/recordings', userRecordingRoutes);
-app.use('/api/user/courses', userCourseRoutes);
-app.use('/api/user/complaints', userComplaintRoutes);
-app.use('/api/user/bonuses', userBonusRoutes);
-app.use('/api/user/certificates', userCertificateRoutes);
-app.use('/api/user/invoices', userInvoiceRoutes);
+app.use('/api/user/auth', apiLimiter, userAuthRoutes);
+app.use('/api/user/meetings', apiLimiter, userMeetingRoutes);
+app.use('/api/user/attendance', apiLimiter, userAttendanceRoutes);
+app.use('/api/user/recordings', apiLimiter, userRecordingRoutes);
+app.use('/api/user/courses', apiLimiter, userCourseRoutes);
+app.use('/api/user/complaints', apiLimiter, userComplaintRoutes);
+app.use('/api/user/bonuses', apiLimiter, userBonusRoutes);
+app.use('/api/user/certificates', apiLimiter, userCertificateRoutes);
+app.use('/api/user/invoices', apiLimiter, userInvoiceRoutes);
 
 const sendSpaIndex = (folderName, missingMsg) => (req, res) => {
   const indexFile = path.join(__dirname, folderName, 'index.html');
