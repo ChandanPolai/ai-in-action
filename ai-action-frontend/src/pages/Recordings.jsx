@@ -32,9 +32,9 @@ const formatResume = (sec = 0) => {
 };
 
 /**
- * Secure player: auth-fetch video → blob URL while this player is open.
- * Revoke only on close (early revoke breaks seek/buffer → ERR_FILE_NOT_FOUND).
- * After close, pasted blob: links fail. While open, same-browser paste may still work.
+ * Progressive stream player (same idea as admin preview).
+ * Short-lived streamToken in query — browser can Range-request, so play starts fast.
+ * (Full-file blob download was making large videos very slow on user app.)
  */
 const ProtectedVideo = ({
   streamPath,
@@ -48,7 +48,7 @@ const ProtectedVideo = ({
   const [blocked, setBlocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [ready, setReady] = useState(false);
+  const [src, setSrc] = useState('');
   const lastProgressRef = useRef(0);
   const completedRef = useRef(false);
   const onProgressRef = useRef(onProgress);
@@ -83,119 +83,56 @@ const ProtectedVideo = ({
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    let objectUrl = '';
+    completedRef.current = false;
+    lastProgressRef.current = 0;
+    startAtRef.current = startAt;
+    setError('');
+    setLoading(true);
 
-    const revokeNow = () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-        objectUrl = '';
-      }
-    };
+    if (!streamPath || !streamToken) {
+      setSrc('');
+      setError('Video session missing. Open the video again.');
+      setLoading(false);
+      return undefined;
+    }
 
-    const clearVideo = (el) => {
-      if (!el) return;
-      try {
-        el.pause();
-      } catch {
-        /* ignore */
-      }
-      el.removeAttribute('src');
-      el.src = '';
-      try {
-        el.srcObject = null;
-      } catch {
-        /* ignore */
-      }
-      try {
-        el.load();
-      } catch {
-        /* ignore */
-      }
-    };
-
-    const load = async () => {
-      setLoading(true);
-      setError('');
-      setReady(false);
-      completedRef.current = false;
-      lastProgressRef.current = 0;
-      startAtRef.current = startAt;
-      revokeNow();
-      clearVideo(videoRef.current);
-
-      if (!streamPath || !streamToken) {
-        setError('Video session missing. Open the video again.');
-        setLoading(false);
-        return;
-      }
-
-      const absolute = `${API_BASE.replace(/\/api$/, '')}${streamPath}`;
-
-      try {
-        const res = await fetch(absolute, {
-          method: 'GET',
-          headers: {
-            'x-stream-token': streamToken,
-            Accept: 'video/*,*/*'
-          }
-        });
-        if (!res.ok) {
-          const msg =
-            res.status === 401 || res.status === 403
-              ? 'Stream expired. Close and open the video again.'
-              : 'Unable to load video';
-          throw new Error(msg);
-        }
-
-        const blob = await res.blob();
-        if (cancelled) return;
-
-        const el = videoRef.current;
-        if (!el) return;
-
-        objectUrl = URL.createObjectURL(blob);
-        el.removeAttribute('src');
-        try {
-          el.srcObject = null;
-        } catch {
-          /* ignore */
-        }
-        el.src = objectUrl;
-
-        const onLoaded = () => {
-          const resumeAt = Math.max(0, Number(startAtRef.current) || 0);
-          if (resumeAt > 0 && Number.isFinite(el.duration) && resumeAt < el.duration - 2) {
-            try {
-              el.currentTime = resumeAt;
-            } catch {
-              /* ignore */
-            }
-          }
-        };
-        el.addEventListener('loadeddata', onLoaded, { once: true });
-
-        setReady(true);
-      } catch (err) {
-        revokeNow();
-        if (!cancelled) setError(err.message || 'Unable to load video');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    load();
+    const absolute = `${API_BASE.replace(/\/api$/, '')}${streamPath}`;
+    const streamUrl = `${absolute}?streamToken=${encodeURIComponent(streamToken)}`;
+    setSrc(streamUrl);
 
     return () => {
-      cancelled = true;
       const el = videoRef.current;
       if (el && !completedRef.current && onProgressRef.current) {
         onProgressRef.current(el.currentTime || 0);
       }
-      clearVideo(videoRef.current);
-      revokeNow();
+      setSrc('');
     };
+    // startAt only applied when a new stream session opens (path/token change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streamPath, streamToken]);
+
+  const handleLoadedMetadata = () => {
+    setLoading(false);
+    const el = videoRef.current;
+    if (!el) return;
+    const resumeAt = Math.max(0, Number(startAtRef.current) || 0);
+    if (resumeAt > 0 && Number.isFinite(el.duration) && resumeAt < el.duration - 2) {
+      try {
+        el.currentTime = resumeAt;
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const handleCanPlay = () => {
+    setLoading(false);
+  };
+
+  const handleError = () => {
+    setLoading(false);
+    setError('Unable to load video. Stream may have expired — open again.');
+  };
 
   const handleTimeUpdate = () => {
     const el = videoRef.current;
@@ -230,33 +167,41 @@ const ProtectedVideo = ({
           Screen capture is not allowed
         </div>
       )}
-      {loading && (
+      {loading && !error && (
         <div className="absolute inset-0 z-[5] flex items-center justify-center text-slate-300 text-sm bg-slate-900">
-          Securely loading video...
+          Starting stream...
         </div>
       )}
-      {error && !loading && (
+      {error && (
         <div className="aspect-video flex items-center justify-center text-rose-300 text-sm px-4 text-center">
           {error}
         </div>
       )}
-      <video
-        ref={videoRef}
-        controls
-        controlsList="nodownload noremoteplayback noplaybackrate"
-        disablePictureInPicture
-        playsInline
-        className={`w-full max-h-[60vh] ${ready && !error ? '' : 'hidden'}`}
-        title={title}
-        onContextMenu={(e) => e.preventDefault()}
-        onTimeUpdate={handleTimeUpdate}
-        onPause={handlePause}
-        onEnded={handleEnded}
-      >
-        Your browser does not support video playback.
-      </video>
+      {src && !error && (
+        <video
+          ref={videoRef}
+          key={src}
+          src={src}
+          controls
+          controlsList="nodownload noremoteplayback noplaybackrate"
+          disablePictureInPicture
+          playsInline
+          preload="metadata"
+          className="w-full max-h-[60vh]"
+          title={title}
+          onContextMenu={(e) => e.preventDefault()}
+          onLoadedMetadata={handleLoadedMetadata}
+          onCanPlay={handleCanPlay}
+          onError={handleError}
+          onTimeUpdate={handleTimeUpdate}
+          onPause={handlePause}
+          onEnded={handleEnded}
+        >
+          Your browser does not support video playback.
+        </video>
+      )}
       <p className="text-[11px] text-slate-400 px-3 py-2 bg-slate-950">
-        Protected player · Pause/close does not use a play · Count only on full finish
+        Streaming player · Starts as soon as buffer is ready · Play counts only on full finish
       </p>
     </div>
   );
