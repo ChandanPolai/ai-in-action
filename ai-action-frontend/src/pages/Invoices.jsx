@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Printer } from 'lucide-react';
+import { FileText, Printer, Eye } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { postRequest } from '../services/apiClient';
-import { openInvoicePrint } from '../utils/openInvoicePrint';
+import { buildInvoiceHtml, printInvoice } from '../utils/openInvoicePrint';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
 
 const InvoicesPage = () => {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewInvoice, setPreviewInvoice] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -85,20 +87,55 @@ const InvoicesPage = () => {
                 </div>
               </div>
 
-              <Button
-                fullWidth
-                icon={Printer}
-                onClick={() => {
-                  const result = openInvoicePrint(inv);
-                  if (result === 'failed') toast.error('Could not open invoice. Allow popups and try again.');
-                }}
-              >
-                View / Print PDF
-              </Button>
+              <div className="flex gap-2">
+                <Button fullWidth variant="secondary" icon={Eye} onClick={() => setPreviewInvoice(inv)}>
+                  Preview
+                </Button>
+                <Button
+                  fullWidth
+                  icon={Printer}
+                  onClick={() => {
+                    const result = printInvoice(inv);
+                    if (result === 'failed') toast.error('Could not print invoice');
+                  }}
+                >
+                  Print / PDF
+                </Button>
+              </div>
             </Card>
           ))}
         </div>
       )}
+
+      <Modal
+        isOpen={!!previewInvoice}
+        onClose={() => setPreviewInvoice(null)}
+        title={previewInvoice?.invoiceNumber || 'Invoice preview'}
+        size="xl"
+      >
+        {previewInvoice && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button
+                variant="ghost"
+                icon={Printer}
+                type="button"
+                onClick={() => {
+                  const result = printInvoice(previewInvoice);
+                  if (result === 'failed') toast.error('Could not print invoice');
+                }}
+              >
+                Print / Save PDF
+              </Button>
+            </div>
+            <iframe
+              title="Invoice preview"
+              className="w-full h-[70vh] rounded-xl border border-slate-200 bg-white"
+              srcDoc={buildInvoiceHtml(previewInvoice, { showPrintButton: false })}
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

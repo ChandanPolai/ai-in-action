@@ -3,7 +3,8 @@ import { sendSuccess, sendError } from '../../utils/apiResponse.js';
 import {
   generateCertificate,
   batchGenerateCertificates,
-  resolvePdfUrl
+  resolvePdfUrl,
+  fetchCertificateFile
 } from '../../utils/certificateApi.js';
 import { sendEmail } from '../../utils/emailService.js';
 
@@ -372,6 +373,31 @@ export const deleteCertificate = async (req, res) => {
     await cert.save();
 
     return sendSuccess(res, 'Certificate deleted successfully');
+  } catch (error) {
+    return sendError(res, error.message, null, 500);
+  }
+};
+
+// @desc    Stream certificate PDF inline for in-app preview (no forced download)
+// @route   POST /api/admin/certificates/preview
+export const previewCertificate = async (req, res) => {
+  try {
+    const { certificateId } = req.body;
+    if (!certificateId) return sendError(res, 'certificateId is required', null, 400);
+
+    const cert = await Certificate.findOne({ _id: certificateId, isDeleted: false });
+    if (!cert) return sendError(res, 'Certificate not found', null, 404);
+
+    const pdfUrl = cert.fullPdfUrl || resolvePdfUrl(cert.pdfUrl);
+    if (!pdfUrl) return sendError(res, 'PDF not available for this certificate', null, 404);
+
+    const { buffer, contentType } = await fetchCertificateFile(pdfUrl);
+    const type = contentType.includes('pdf') ? 'application/pdf' : contentType;
+
+    res.setHeader('Content-Type', type);
+    res.setHeader('Content-Disposition', 'inline; filename="certificate.pdf"');
+    res.setHeader('Cache-Control', 'private, max-age=60');
+    return res.send(buffer);
   } catch (error) {
     return sendError(res, error.message, null, 500);
   }

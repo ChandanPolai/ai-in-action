@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Award, Download, Mail, Search, Trash2, RefreshCw } from 'lucide-react';
+import { Award, Download, Eye, Mail, Search, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { fetchUsersThunk } from '../store/slices/usersSlice';
-import { postRequest } from '../services/apiClient';
+import { postRequest, postBlobRequest } from '../services/apiClient';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -30,6 +31,9 @@ const CertificatesPage = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [sendingId, setSendingId] = useState(null);
+  const [previewCert, setPreviewCert] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const loadCertificates = async (search = listSearch) => {
     setLoading(true);
@@ -150,6 +154,57 @@ const CertificatesPage = () => {
     if (status === 'failed') return <Badge variant="danger">Failed</Badge>;
     if (status === 'skipped') return <Badge variant="default">No email</Badge>;
     return <Badge variant="default">Pending</Badge>;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const closePreview = () => {
+    setPreviewCert(null);
+    setPreviewLoading(false);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+  };
+
+  const openPreview = async (cert) => {
+    setPreviewCert(cert);
+    setPreviewLoading(true);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+    try {
+      const blob = await postBlobRequest('/admin/certificates/preview', {
+        certificateId: cert.id
+      });
+      const pdfBlob =
+        blob.type && blob.type.includes('pdf')
+          ? blob
+          : new Blob([blob], { type: 'application/pdf' });
+      setPreviewUrl(URL.createObjectURL(pdfBlob));
+    } catch (err) {
+      toast.error(err.message || 'Failed to load preview');
+      closePreview();
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const downloadCert = (cert) => {
+    if (!cert?.fullPdfUrl) return;
+    const a = document.createElement('a');
+    a.href = cert.fullPdfUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.download = `${cert.certId || 'certificate'}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   return (
@@ -316,15 +371,24 @@ const CertificatesPage = () => {
                     <td className="py-3">
                       <div className="flex items-center justify-end gap-1">
                         {c.fullPdfUrl && (
-                          <a
-                            href={c.fullPdfUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600"
-                            title="Download PDF"
-                          >
-                            <Download className="w-4 h-4" />
-                          </a>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openPreview(c)}
+                              className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600"
+                              title="Preview PDF"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => downloadCert(c)}
+                              className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600"
+                              title="Download PDF"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                         <button
                           type="button"
@@ -352,6 +416,38 @@ const CertificatesPage = () => {
           </div>
         )}
       </Card>
+
+      <Modal
+        isOpen={!!previewCert}
+        onClose={closePreview}
+        title={previewCert?.courseTitle || 'Certificate preview'}
+        size="xl"
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              icon={Download}
+              disabled={!previewCert?.fullPdfUrl}
+              onClick={() => downloadCert(previewCert)}
+            >
+              Download PDF
+            </Button>
+          </div>
+          {previewLoading ? (
+            <p className="text-center py-16 text-slate-400">Loading preview...</p>
+          ) : previewUrl ? (
+            <iframe
+              title="Certificate preview"
+              src={previewUrl}
+              className="w-full h-[70vh] rounded-xl border border-slate-200 bg-slate-50"
+            />
+          ) : (
+            <p className="text-center py-16 text-slate-400">Preview unavailable</p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

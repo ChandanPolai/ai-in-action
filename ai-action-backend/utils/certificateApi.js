@@ -201,9 +201,48 @@ export const batchGenerateCertificates = async ({
 
 export const resolvePdfUrl = buildAbsoluteUrl;
 
+/**
+ * Fetch a remote certificate file (PDF/SVG) for inline preview/download proxy.
+ */
+export const fetchCertificateFile = async (fileUrl) => {
+  const url = buildAbsoluteUrl(fileUrl);
+  if (!url) throw new Error('Certificate file URL is missing');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/pdf,image/svg+xml,*/*',
+        'bypass-tunnel-reminder': 'true',
+        'User-Agent': 'Mozilla/5.0'
+      },
+      signal: controller.signal
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch certificate file (${res.status})`);
+    }
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const contentType = res.headers.get('content-type') || 'application/pdf';
+    return { buffer, contentType, url };
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Certificate file fetch timed out');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 export default {
   generateCertificate,
   batchGenerateCertificates,
   resolvePdfUrl,
+  fetchCertificateFile,
   getGenerateUrl
 };

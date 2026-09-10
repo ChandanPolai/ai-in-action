@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Award, Download, ExternalLink } from 'lucide-react';
+import { Award, Download, Eye } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { postRequest } from '../services/apiClient';
+import { postRequest, postBlobRequest } from '../services/apiClient';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import Modal from '../components/ui/Modal';
 
 const CertificatesPage = () => {
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewCert, setPreviewCert] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -21,6 +25,58 @@ const CertificatesPage = () => {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const closePreview = () => {
+    setPreviewCert(null);
+    setPreviewLoading(false);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+  };
+
+  const openPreview = async (cert) => {
+    setPreviewCert(cert);
+    setPreviewLoading(true);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+    try {
+      const blob = await postBlobRequest('/user/certificates/preview', {
+        certificateId: cert.id
+      });
+      const pdfBlob =
+        blob.type && blob.type.includes('pdf')
+          ? blob
+          : new Blob([blob], { type: 'application/pdf' });
+      const url = URL.createObjectURL(pdfBlob);
+      setPreviewUrl(url);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load preview');
+      closePreview();
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const downloadCert = (cert) => {
+    if (!cert?.fullPdfUrl) return;
+    const a = document.createElement('a');
+    a.href = cert.fullPdfUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.download = `${cert.certId || 'certificate'}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   return (
     <div className="space-y-5">
@@ -60,19 +116,11 @@ const CertificatesPage = () => {
               </div>
               {c.fullPdfUrl ? (
                 <div className="flex gap-2">
-                  <Button
-                    fullWidth
-                    icon={Download}
-                    onClick={() => window.open(c.fullPdfUrl, '_blank', 'noopener,noreferrer')}
-                  >
-                    Download PDF
+                  <Button fullWidth icon={Eye} onClick={() => openPreview(c)}>
+                    Preview
                   </Button>
-                  <Button
-                    variant="secondary"
-                    icon={ExternalLink}
-                    onClick={() => window.open(c.fullPdfUrl, '_blank', 'noopener,noreferrer')}
-                  >
-                    Open
+                  <Button fullWidth variant="secondary" icon={Download} onClick={() => downloadCert(c)}>
+                    Download
                   </Button>
                 </div>
               ) : (
@@ -82,6 +130,38 @@ const CertificatesPage = () => {
           ))}
         </div>
       )}
+
+      <Modal
+        isOpen={!!previewCert}
+        onClose={closePreview}
+        title={previewCert?.courseTitle || 'Certificate preview'}
+        size="xl"
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              icon={Download}
+              disabled={!previewCert?.fullPdfUrl}
+              onClick={() => downloadCert(previewCert)}
+            >
+              Download PDF
+            </Button>
+          </div>
+          {previewLoading ? (
+            <p className="text-center py-16 text-slate-400">Loading preview...</p>
+          ) : previewUrl ? (
+            <iframe
+              title="Certificate preview"
+              src={previewUrl}
+              className="w-full h-[70vh] rounded-xl border border-slate-200 bg-slate-50"
+            />
+          ) : (
+            <p className="text-center py-16 text-slate-400">Preview unavailable</p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

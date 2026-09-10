@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { FileText, Printer, Search, Trash2, Save, RefreshCw } from 'lucide-react';
+import { FileText, Printer, Search, Trash2, Save, RefreshCw, Eye } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { fetchUsersThunk } from '../store/slices/usersSlice';
 import { fetchWorkshopsThunk } from '../store/slices/workshopsSlice';
 import { postRequest } from '../services/apiClient';
-import { openInvoicePrint } from '../utils/openInvoicePrint';
+import { buildInvoiceHtml, printInvoice } from '../utils/openInvoicePrint';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -54,6 +55,7 @@ const InvoicesPage = () => {
   const [userSearch, setUserSearch] = useState('');
   const [listSearch, setListSearch] = useState('');
   const [invoices, setInvoices] = useState([]);
+  const [previewInvoice, setPreviewInvoice] = useState(null);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingCompany, setSavingCompany] = useState(false);
@@ -176,8 +178,7 @@ const InvoicesPage = () => {
         invoiceDate: form.invoiceDate
       });
       toast.success(`Invoice ${res.data.invoice.invoiceNumber} created`);
-      const result = openInvoicePrint(res.data.invoice);
-      if (result === 'failed') toast.error('Could not open invoice print view');
+      setPreviewInvoice(res.data.invoice);
       setForm(emptyForm);
       await loadInvoices();
     } catch (err) {
@@ -524,12 +525,20 @@ const InvoicesPage = () => {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
+                          onClick={() => setPreviewInvoice(inv)}
+                          className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600"
+                          title="Preview"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => {
-                            const result = openInvoicePrint(inv);
-                            if (result === 'failed') toast.error('Could not open invoice. Allow popups and try again.');
+                            const result = printInvoice(inv);
+                            if (result === 'failed') toast.error('Could not print invoice');
                           }}
                           className="p-2 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600"
-                          title="Print / PDF"
+                          title="Print / Save PDF"
                         >
                           <Printer className="w-4 h-4" />
                         </button>
@@ -550,6 +559,36 @@ const InvoicesPage = () => {
           </div>
         )}
       </Card>
+
+      <Modal
+        isOpen={!!previewInvoice}
+        onClose={() => setPreviewInvoice(null)}
+        title={previewInvoice?.invoiceNumber || 'Invoice preview'}
+        size="xl"
+      >
+        {previewInvoice && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button
+                variant="ghost"
+                icon={Printer}
+                type="button"
+                onClick={() => {
+                  const result = printInvoice(previewInvoice);
+                  if (result === 'failed') toast.error('Could not print invoice');
+                }}
+              >
+                Print / Save PDF
+              </Button>
+            </div>
+            <iframe
+              title="Invoice preview"
+              className="w-full h-[70vh] rounded-xl border border-slate-200 bg-white"
+              srcDoc={buildInvoiceHtml(previewInvoice, { showPrintButton: false })}
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

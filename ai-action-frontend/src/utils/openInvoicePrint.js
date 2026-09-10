@@ -1,7 +1,6 @@
 /**
- * Open / print a GST invoice.
- * Uses a Blob URL (avoids window.open noopener returning null).
- * Falls back to hidden iframe print if popups are blocked.
+ * GST invoice HTML + print helpers.
+ * Preview = show HTML (no auto print). Print = user clicks Print.
  */
 
 const escapeHtml = (value) =>
@@ -30,7 +29,7 @@ const fmtDate = (d) => {
   }
 };
 
-const buildInvoiceHtml = (inv) => {
+export const buildInvoiceHtml = (inv, { showPrintButton = true } = {}) => {
   const taxRows = [];
   if (Number(inv.cgstAmount) > 0 || Number(inv.sgstAmount) > 0) {
     taxRows.push(
@@ -44,6 +43,10 @@ const buildInvoiceHtml = (inv) => {
       `<tr><td>IGST (${Number(inv.gstPercent || 0)}%)</td><td style="text-align:right">${money(inv.igstAmount || inv.gstAmount)}</td></tr>`
     );
   }
+
+  const actions = showPrintButton
+    ? `<div class="actions"><button type="button" onclick="window.print()">Print / Save PDF</button></div>`
+    : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -71,7 +74,7 @@ const buildInvoiceHtml = (inv) => {
   </style>
 </head>
 <body>
-  <div class="actions"><button type="button" onclick="window.print()">Print / Save PDF</button></div>
+  ${actions}
   <div class="sheet">
     <div class="row" style="align-items:flex-start;margin-bottom:18px;">
       <div>
@@ -137,11 +140,6 @@ const buildInvoiceHtml = (inv) => {
     ${inv.notes ? `<p class="muted" style="margin-top:24px;"><strong>Notes:</strong> ${escapeHtml(inv.notes)}</p>` : ''}
     <p class="muted" style="margin-top:28px;text-align:center;">This is a computer-generated GST invoice.</p>
   </div>
-  <script>
-    window.addEventListener('load', function () {
-      setTimeout(function () { try { window.focus(); } catch (e) {} }, 100);
-    });
-  </script>
 </body>
 </html>`;
 };
@@ -167,12 +165,6 @@ const printViaIframe = (html) => {
   doc.write(html);
   doc.close();
 
-  const cleanup = () => {
-    setTimeout(() => {
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-    }, 1000);
-  };
-
   setTimeout(() => {
     try {
       iframe.contentWindow.focus();
@@ -180,25 +172,20 @@ const printViaIframe = (html) => {
     } catch {
       /* ignore */
     }
-    cleanup();
+    setTimeout(() => {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    }, 1000);
   }, 300);
 
   return true;
 };
 
-/**
- * @returns {'opened'|'printed'|'failed'}
- */
-export const openInvoicePrint = (inv) => {
+export const openInvoicePreviewTab = (inv) => {
   if (!inv) return 'failed';
-
-  const html = buildInvoiceHtml(inv);
+  const html = buildInvoiceHtml(inv, { showPrintButton: true });
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
-
-  // Do NOT pass noopener — it makes window.open return null in Chromium
   const w = window.open(url, '_blank');
-
   if (w) {
     try {
       w.focus();
@@ -208,10 +195,20 @@ export const openInvoicePrint = (inv) => {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
     return 'opened';
   }
-
   URL.revokeObjectURL(url);
-  const printed = printViaIframe(html);
-  return printed ? 'printed' : 'failed';
+  return 'failed';
+};
+
+export const printInvoice = (inv) => {
+  if (!inv) return 'failed';
+  const html = buildInvoiceHtml(inv, { showPrintButton: false });
+  return printViaIframe(html) ? 'printed' : 'failed';
+};
+
+export const openInvoicePrint = (inv) => {
+  const opened = openInvoicePreviewTab(inv);
+  if (opened === 'opened') return 'opened';
+  return printInvoice(inv);
 };
 
 export default openInvoicePrint;

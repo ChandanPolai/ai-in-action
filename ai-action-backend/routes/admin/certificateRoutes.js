@@ -3,7 +3,8 @@ import {
   listCertificates,
   generateAndSaveCertificates,
   sendCertificates,
-  deleteCertificate
+  deleteCertificate,
+  previewCertificate
 } from '../../controllers/admin/certificateController.js';
 import { verifyAdminToken } from '../../middlewares/adminAuth.js';
 
@@ -15,5 +16,6 @@ router.post('/list', listCertificates);
 router.post('/generate', generateAndSaveCertificates);
 router.post('/send', sendCertificates);
 router.post('/delete', deleteCertificate);
+router.post('/preview', previewCertificate);
 
 export default router;
